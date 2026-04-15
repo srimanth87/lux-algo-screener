@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxAlgo® Screener (S&O)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+:root{
+  --bg:#0d0e11;--bg2:#13151a;--bg3:#1a1d24;--border:#252830;
+  --bull:#26a69a;--bull-text:#4ecca3;--bear:#ef5350;--bear-text:#ff6b6b;
+  --neutral:#787b86;--text:#d1d4dc;--text-dim:#787b86;
+  --header-bg:#1a1d24;--row-hover:#1e2128;--accent:#2962ff;
+  --fire:#ff6d00;--snow:#b0c4de;--warn:#ffd600;
+  --tag-bull:rgba(38,166,154,.18);--tag-bear:rgba(239,83,80,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:12px;min-height:100vh}
+
+/* HEADER */
+.header{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
+.logo{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:#fff;background:#1a1d24;border:1px solid var(--border);padding:3px 8px;border-radius:4px;white-space:nowrap}
+.logo span{color:var(--accent)}
+.header-controls{display:flex;align-items:center;gap:6px;margin-left:auto}
+.tf-btns{display:flex;gap:3px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px}
+.tf-btn{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:3px 9px;border-radius:3px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s}
+.tf-btn:hover{color:var(--text)}.tf-btn.active{background:var(--accent);color:#fff}
+.tf-btn.tf-bias{color:#ff9800;border-left:1px solid var(--border);margin-left:2px;padding-left:10px}
+.tf-btn.tf-bias.active{background:#ff9800;color:#000}
+.sens-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;padding:0 8px;border-left:1px solid var(--border)}
+.sens-wrap input[type=range]{width:60px;cursor:pointer;accent-color:var(--accent)}
+.sens-val{color:var(--text);font-weight:600;min-width:22px}
+.refresh-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.refresh-btn:hover{color:var(--text);border-color:#3a3d48}
+.refresh-btn.spinning .spin-icon{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.last-updated{font-size:10px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+
+/* TELEGRAM CONFIG */
+.tg-btn{background:var(--bg3);border:1px solid var(--border);color:#2AABEE;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px}
+.tg-btn:hover{border-color:#2AABEE}
+.tg-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.tg-modal-overlay.open{display:flex}
+.tg-modal{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:20px;width:360px;display:flex;flex-direction:column;gap:12px}
+.tg-modal h3{font-size:13px;color:#fff;font-family:'IBM Plex Mono',monospace}
+.tg-modal label{font-size:11px;color:var(--text-dim)}
+.tg-modal input{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:11px;font-family:'IBM Plex Mono',monospace;padding:6px 10px;border-radius:4px;width:100%;outline:none;margin-top:4px}
+.tg-modal input:focus{border-color:var(--accent)}
+.tg-modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.tg-save{background:var(--accent);color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;cursor:pointer}
+.tg-cancel{background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:4px;padding:6px 14px;font-size:11px;cursor:pointer}
+.tg-status{font-size:10px;padding:4px 8px;border-radius:3px}
+.tg-status.ok{background:rgba(0,200,150,.15);color:#00c896}
+.tg-status.off{background:var(--bg3);color:var(--text-dim)}
+
+/* TABS */
+.tabs-bar{display:flex;align-items:center;padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:41px;z-index:15}
+.tab-btn{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:8px 16px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}.tab-btn.active{color:#fff;border-bottom-color:var(--accent)}
+.tab-badge{display:inline-block;background:var(--bg3);border:1px solid var(--border);color:var(--text-dim);font-size:9px;padding:1px 5px;border-radius:10px;margin-left:5px;font-weight:400}
+.tab-badge.scanning{background:rgba(41,98,255,.2);border-color:var(--accent);color:var(--accent)}
+.tab-badge.done{background:rgba(0,200,150,.15);border-color:#00c896;color:#00c896}
+.tab-badge.alert{background:rgba(255,107,107,.2);border-color:var(--bear);color:var(--bear-text);animation:blink 1s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* WATCHLIST TOOLBAR */
+.ticker-bar{display:flex;align-items:center;gap:8px;padding:7px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ticker-bar label{font-size:11px;color:var(--text-dim)}
+.ticker-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:11px;font-family:'IBM Plex Mono',monospace;padding:4px 8px;border-radius:4px;width:260px;outline:none}
+.ticker-input:focus{border-color:var(--accent)}
+.add-btn{background:var(--accent);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer}
+.ticker-chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{background:var(--bg3);border:1px solid var(--border);color:var(--text-dim);font-size:10px;font-family:'IBM Plex Mono',monospace;padding:2px 6px;border-radius:3px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.chip:hover{border-color:var(--bear);color:var(--bear-text)}
+
+/* NDX TOOLBAR */
+.ndx-toolbar{display:flex;align-items:center;gap:12px;padding:7px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ndx-status{font-size:11px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+.ndx-status span{color:var(--text)}
+.ndx-progress-wrap{flex:1;max-width:260px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.ndx-progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),#7c4dff);border-radius:2px;transition:width .3s;width:0}
+.ndx-filter-btns{display:flex;gap:4px}
+.ndx-filter{background:var(--bg3);border:1px solid var(--border);color:var(--text-dim);font-size:10px;border-radius:3px;padding:3px 8px;cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .12s}
+.ndx-filter.active{border-color:var(--accent);color:var(--accent)}
+
+/* TABLE */
+.tab-panel{display:none}.tab-panel.active{display:block}
+.table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 145px)}
+table{width:100%;border-collapse:collapse;min-width:1200px}
+thead th{background:var(--header-bg);color:var(--text-dim);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:5;font-family:'IBM Plex Mono',monospace;cursor:pointer;user-select:none}
+thead th:hover{color:var(--text)}
+thead th:first-child{padding-left:14px}
+thead th .sa{opacity:.4;margin-left:3px;font-size:9px}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:hover{background:var(--row-hover)}
+td{padding:7px 10px;white-space:nowrap;vertical-align:middle}
+td:first-child{padding-left:14px}
+.cell-ticker{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;color:#fff}
+.cell-ticker .tf{color:var(--text-dim);font-weight:400;font-size:10px;margin-left:2px}
+.cell-price{font-family:'IBM Plex Mono',monospace;font-size:12px}
+.cell-chg{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500}
+.cell-chg.up{color:var(--bull-text)}.cell-chg.dn{color:var(--bear-text)}
+.swing-rank{display:inline-flex;align-items:center;gap:3px}
+.swing-rank .stars{font-size:11px;letter-spacing:1px}
+.swing-rank.r5 .stars{color:#ffd700}.swing-rank.r4 .stars{color:#4ecca3}
+.swing-rank.r3 .stars{color:#ffd600}.swing-rank.r2 .stars{color:#ff9800}
+.swing-rank.r1 .stars{color:#ff6b6b}
+.swing-score{font-size:9px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;margin-left:2px}
+.rating-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:500}
+.rating-tag.strong-bull{background:rgba(0,200,150,.15);color:#00e5b0}
+.rating-tag.bull{background:var(--tag-bull);color:var(--bull-text)}
+.rating-tag.bear{background:var(--tag-bear);color:var(--bear-text)}
+.rating-tag.strong-bear{background:rgba(255,68,68,.12);color:#ff4444}
+.sig-box{display:inline-flex;align-items:center;justify-content:center;width:24px;height:22px;border-radius:3px;font-size:9px}
+.sig-box.bull-up{background:var(--bull)}.sig-box.bear-dn{background:var(--bear)}.sig-box.empty{background:transparent;color:var(--text-dim)}
+.exit-badge{background:var(--accent);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:10px;border-radius:3px;padding:1px 6px;display:inline-block}
+.trail-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px}
+.trail-tag.bull{color:var(--bull-text)}.trail-tag.bear{color:var(--bear-text)}.trail-tag.neutral{color:var(--neutral)}
+.trend-wrap{display:flex;align-items:center;gap:5px}
+.trend-pct{font-family:'IBM Plex Mono',monospace;font-size:11px}
+.trend-pct.fire{color:#ff9800}.trend-pct.snow{color:var(--snow)}.trend-pct.mild{color:var(--text)}
+.vol-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px}
+.vol-tag.low{color:var(--warn)}.vol-tag.mod{color:var(--snow)}.vol-tag.high{color:var(--bear-text)}
+.sqz-bar-wrap{display:flex;align-items:center;gap:5px}
+.sqz-pct{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);min-width:36px;text-align:right}
+.sqz-bar{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent),#7c4dff)}
+.vwap-wrap{display:inline-flex;flex-direction:column;align-items:center;gap:1px}
+.vwap-label{font-size:11px;font-weight:500;white-space:nowrap}
+.vwap-dev{font-size:10px;font-family:'IBM Plex Mono',monospace;opacity:.8}
+.vwap-above2{color:#00e5b0}.vwap-above1{color:#4ecca3}.vwap-above{color:#4ecca3;opacity:.8}
+.vwap-below{color:#ff6b6b;opacity:.8}.vwap-below1{color:#ff6b6b}.vwap-below2{color:#ff4444}
+
+/* MTF CONFLUENCE BADGE on rows */
+.mtf-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-family:'IBM Plex Mono',monospace;padding:2px 6px;border-radius:3px;border:1px solid}
+.mtf-badge.mtf-high{background:rgba(0,200,150,.12);border-color:#00c896;color:#00e5b0}
+.mtf-badge.mtf-med{background:rgba(255,214,0,.1);border-color:#ffd600;color:#ffd600}
+.mtf-badge.mtf-low{background:rgba(120,123,134,.1);border-color:#555;color:var(--text-dim)}
+
+.loading-row td{text-align:center;color:var(--text-dim);padding:30px;font-family:'IBM Plex Mono',monospace;font-size:11px}
+.err-cell{color:var(--bear-text);font-size:10px;font-family:'IBM Plex Mono',monospace}
+.pulse{display:inline-block;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+tbody tr.loaded{animation:fadeIn .2s ease forwards}
+
+/* ═══ CONFLUENCE ALERT TAB ═══ */
+.alert-toolbar{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.alert-toolbar label{font-size:11px;color:var(--text-dim)}
+.threshold-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:11px;font-family:'IBM Plex Mono',monospace;padding:4px 8px;border-radius:4px;outline:none}
+.alert-scan-btn{background:linear-gradient(135deg,#2962ff,#7c4dff);color:#fff;border:none;border-radius:5px;padding:5px 14px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-weight:600}
+.alert-scan-btn:disabled{opacity:.5;cursor:not-allowed}
+.alert-legend{display:flex;gap:12px;margin-left:auto;font-size:10px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;align-items:center}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:3px}
+
+.alert-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;padding:16px;max-height:calc(100vh - 145px);overflow-y:auto}
+
+/* TRADE CARD */
+.trade-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .2s}
+.trade-card:hover{border-color:#3a3d48}
+.trade-card.grade-A{border-left:3px solid #00c896}
+.trade-card.grade-B{border-left:3px solid #ffd600}
+.trade-card.grade-C{border-left:3px solid #787b86}
+
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.card-ticker{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;color:#fff}
+.card-price{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text)}
+.card-chg{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600}
+.card-chg.up{color:var(--bull-text)}.card-chg.dn{color:var(--bear-text)}
+.card-grade{font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;padding:3px 8px;border-radius:3px}
+.card-grade.A{background:rgba(0,200,150,.2);color:#00e5b0}
+.card-grade.B{background:rgba(255,214,0,.15);color:#ffd600}
+.card-grade.C{background:rgba(120,123,134,.15);color:var(--neutral)}
+
+.card-body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+
+/* MTF Confluence grid */
+.mtf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mtf-tf-block{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:7px 8px;display:flex;flex-direction:column;gap:4px}
+.mtf-tf-label{font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em}
+.mtf-tf-rating{font-size:11px;font-weight:600}
+.mtf-tf-rating.bull{color:var(--bull-text)}.mtf-tf-rating.bear{color:var(--bear-text)}.mtf-tf-rating.neutral{color:var(--neutral)}
+.mtf-tf-checks{display:flex;flex-direction:column;gap:2px;margin-top:2px}
+.mtf-check{font-size:10px;display:flex;align-items:center;gap:4px}
+.mtf-check .ck{font-size:9px}
+.mtf-check.pass{color:var(--bull-text)}.mtf-check.fail{color:var(--text-dim)}
+
+/* Checklist */
+.checklist{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.check-item{display:flex;align-items:center;gap:5px;font-size:10px;padding:3px 6px;border-radius:3px;background:var(--bg3)}
+.check-item.pass{color:var(--bull-text)}.check-item.fail{color:var(--text-dim)}
+.check-icon{font-size:10px;min-width:12px}
+
+/* Trade suggestion box */
+.trade-box{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.trade-box-title{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em}
+.trade-levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.trade-level{display:flex;flex-direction:column;gap:2px}
+.trade-level-label{font-size:9px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+.trade-level-val{font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace}
+.trade-level-val.entry{color:var(--bull-text)}.trade-level-val.stop{color:var(--bear-text)}.trade-level-val.target{color:#ffd600}
+
+.card-footer{padding:8px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.confluence-score{font-size:11px;font-family:'IBM Plex Mono',monospace}
+.confluence-score .score-val{font-size:16px;font-weight:600;color:#fff}
+.confluence-score .score-max{font-size:10px;color:var(--text-dim)}
+.card-actions{display:flex;gap:6px}
+.card-tg-btn{background:rgba(42,171,238,.15);border:1px solid rgba(42,171,238,.4);color:#2AABEE;font-size:10px;border-radius:3px;padding:3px 8px;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+.card-tg-btn:hover{background:rgba(42,171,238,.25)}
+.card-tg-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.no-alerts{text-align:center;padding:60px 20px;color:var(--text-dim)}
+.no-alerts h3{font-size:14px;margin-bottom:8px;color:var(--text)}
+.no-alerts p{font-size:12px;line-height:1.6}
+.ndx-empty{text-align:center;padding:60px 20px;color:var(--text-dim)}
+.ndx-empty h3{font-size:14px;margin-bottom:8px;color:var(--text)}
+.ndx-start-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:12px;cursor:pointer;margin-top:12px}
+
+/* ═══ TRADE ANALYSIS MODAL ═══ */
+.ta-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto}
+.ta-overlay.open{display:flex}
+.ta-modal{background:var(--bg2);border:1px solid var(--border);border-radius:10px;width:720px;max-width:95vw;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);margin-bottom:40px}
+.ta-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--bg3);border-bottom:1px solid var(--border);border-radius:10px 10px 0 0}
+.ta-header-left{display:flex;align-items:center;gap:10px}
+.ta-ticker{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:18px;color:#fff}
+.ta-price{font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--text)}
+.ta-chg{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+.ta-chg.up{color:var(--bull-text)}.ta-chg.dn{color:var(--bear-text)}
+.ta-close{background:transparent;border:1px solid var(--border);color:var(--text-dim);width:28px;height:28px;border-radius:5px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ta-close:hover{color:#fff;border-color:#555}
+.ta-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.ta-verdict{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:7px;border:1px solid}
+.ta-verdict.take{background:rgba(0,200,150,.1);border-color:#00c896}
+.ta-verdict.skip{background:rgba(239,83,80,.1);border-color:#ef5350}
+.ta-verdict.neutral{background:rgba(255,214,0,.08);border-color:#ffd600}
+.ta-verdict-label{font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.ta-verdict.take .ta-verdict-label{color:#00e5b0}
+.ta-verdict.skip .ta-verdict-label{color:#ff6b6b}
+.ta-verdict.neutral .ta-verdict-label{color:#ffd600}
+.ta-verdict-sub{font-size:11px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+.ta-conf-bar-wrap{display:flex;align-items:center;gap:8px}
+.ta-conf-bar-bg{width:120px;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.ta-conf-bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.ta-conf-num{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#fff}
+.ta-reasons{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ta-col-title{font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.ta-col-title.pro{color:#00c896}.ta-col-title.con{color:#ef5350}
+.ta-reason-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;font-size:11px;line-height:1.5;border-bottom:1px solid rgba(255,255,255,.04)}
+.ta-reason-item:last-child{border-bottom:none}
+.ta-reason-item .ri{font-size:12px;margin-top:1px;flex-shrink:0}
+.ta-levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ta-level-box{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.ta-level-label{font-size:9px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em}
+.ta-level-val{font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace}
+.ta-level-val.entry{color:#4ecca3}.ta-level-val.stop{color:#ff6b6b}
+.ta-level-val.t1{color:#ffd600}.ta-level-val.t2{color:#ff9800}
+.ta-level-note{font-size:9px;color:var(--text-dim)}
+.ta-mtf-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ta-tf-pill{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:8px 10px}
+.ta-tf-pill-label{font-size:9px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.ta-tf-pill-rating{font-size:11px;font-weight:600;margin-bottom:3px}
+.ta-tf-pill-rating.bull{color:var(--bull-text)}.ta-tf-pill-rating.bear{color:var(--bear-text)}.ta-tf-pill-rating.neutral{color:var(--neutral)}
+.ta-tf-dots{display:flex;gap:3px;flex-wrap:wrap}
+.ta-dot{width:7px;height:7px;border-radius:50%}
+.ta-dot.pass{background:#00c896}.ta-dot.fail{background:#333}
+.ta-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ta-footer-note{font-size:10px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+.ta-tg-send{background:rgba(42,171,238,.15);border:1px solid rgba(42,171,238,.4);color:#2AABEE;font-size:11px;border-radius:4px;padding:5px 12px;cursor:pointer}
+.ta-tg-send:disabled{opacity:.4;cursor:not-allowed}
+tbody tr.loaded{cursor:pointer}
+
+/* ═══ WATCHDOG TAB ═══ */
+.watchdog-layout{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 145px)}
+.watchdog-sidebar{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.watchdog-sidebar-title{font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);padding:10px 14px 6px;border-bottom:1px solid var(--border)}
+.watchdog-add{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.watchdog-add input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:11px;font-family:'IBM Plex Mono',monospace;padding:5px 8px;border-radius:4px;outline:none}
+.watchdog-add input:focus{border-color:var(--accent)}
+.watchdog-add button{background:var(--accent);color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap}
+.watchdog-settings{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.watchdog-settings label{font-size:10px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace}
+.watchdog-settings select,.watchdog-settings input[type=range]{width:100%}
+.wd-range-row{display:flex;align-items:center;gap:8px}
+.wd-range-val{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);min-width:20px}
+.watchdog-ticker-list{flex:1;overflow-y:auto;padding:6px 0}
+.wd-ticker-item{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.04);transition:background .1s;cursor:default}
+.wd-ticker-item:hover{background:var(--row-hover)}
+.wd-ticker-name{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;color:#fff}
+.wd-ticker-status{display:flex;align-items:center;gap:6px}
+.wd-status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.wd-status-dot.watching{background:#ffd600;animation:pulse 1.5s infinite}
+.wd-status-dot.triggered{background:#00c896;animation:none}
+.wd-status-dot.weak{background:#ef5350;animation:none}
+.wd-status-dot.idle{background:#333;animation:none}
+.wd-status-label{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-dim)}
+.wd-remove{background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:2px 5px}
+.wd-remove:hover{color:var(--bear-text)}
+.watchdog-start-btn{margin:10px 14px;background:linear-gradient(135deg,#2962ff,#7c4dff);color:#fff;border:none;border-radius:5px;padding:8px;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-weight:600;width:calc(100% - 28px)}
+.watchdog-start-btn.running{background:linear-gradient(135deg,#ef5350,#b71c1c)}
+.watchdog-main{display:flex;flex-direction:column;overflow:hidden}
+.watchdog-status-bar{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.wd-countdown{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim)}
+.wd-countdown span{color:var(--text)}
+.wd-alert-count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#00c896}
+.wd-clear-btn{margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-dim);font-size:10px;border-radius:3px;padding:3px 8px;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+.wd-clear-btn:hover{color:var(--text)}
+.watchdog-feed{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.wd-empty{text-align:center;padding:60px 20px;color:var(--text-dim)}
+.wd-empty h3{font-size:13px;color:var(--text);margin-bottom:8px}
+/* Alert card in feed */
+.wd-alert-card{background:var(--bg2);border:1px solid var(--border);border-radius:7px;overflow:hidden;border-left:3px solid}
+.wd-alert-card.new{border-left-color:#00c896;animation:fadeIn .3s ease}
+.wd-alert-card.cleared{border-left-color:#555;opacity:.6}
+.wd-alert-header{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.wd-alert-ticker{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;color:#fff}
+.wd-alert-time{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-dim)}
+.wd-alert-body{padding:9px 12px;display:flex;flex-direction:column;gap:6px}
+.wd-alert-score{font-size:12px;font-family:'IBM Plex Mono',monospace}
+.wd-alert-score span{color:#fff;font-weight:600}
+.wd-conditions{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.wd-cond-tag{font-size:10px;padding:2px 7px;border-radius:3px;font-family:'IBM Plex Mono',monospace}
+.wd-cond-tag.pass{background:rgba(0,200,150,.15);color:#00e5b0}
+.wd-cond-tag.fail{background:rgba(120,123,134,.1);color:var(--text-dim)}
+.wd-alert-levels{display:flex;gap:12px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text-dim);margin-top:2px}
+.wd-alert-levels b{color:var(--text)}
+
+/* Exits filter in toolbar */
+.exits-filter-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;padding:0 8px;border-left:1px solid var(--border)}
+.exits-filter-wrap input[type=range]{width:70px;cursor:pointer}
+.exits-val{color:var(--text);font-weight:600;min-width:12px}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo"><span>LuxAlgo®</span> Screener (S&O)</div>
+  <div class="tf-btns">
+    <button class="tf-btn" data-tf="5m" onclick="setTF('5m')">5m</button>
+    <button class="tf-btn active" data-tf="15m" onclick="setTF('15m')">15m</button>
+    <button class="tf-btn" data-tf="1h" onclick="setTF('1h')">1h</button>
+    <button class="tf-btn tf-bias" data-tf="1d" onclick="setTF('1d')" title="Daily bias check — not for intraday scanning">1D Bias</button>
+  </div>
+  <div class="header-controls">
+    <div class="sens-wrap" title="UT Bot Sensitivity — lower = fewer exits/flips">
+      <label>UT Sens:</label>
+      <input type="range" id="utSensSlider" min="1" max="4" step="0.5" value="1.5" oninput="updateUtSens(this.value)">
+      <span class="sens-val" id="utSensVal">1.5</span>
+    </div>
+    <button class="tg-btn" onclick="openTgModal()">✈ Telegram</button>
+    <span class="tg-status off" id="tgStatus">Not configured</span>
+    <button class="refresh-btn" id="refreshBtn" onclick="refreshActive()">
+      <span class="spin-icon">↻</span> Refresh
+    </button>
+    <span class="last-updated" id="lastUpdated">—</span>
+  </div>
+</div>
+
+<!-- TELEGRAM MODAL -->
+<div class="tg-modal-overlay" id="tgModal">
+  <div class="tg-modal">
+    <h3>✈ Telegram Alert Config</h3>
+    <div>
+      <label>Bot Token</label>
+      <input id="tgToken" type="text" placeholder="8570415382:AAF7q0vm..." />
+    </div>
+    <div>
+      <label>Chat ID</label>
+      <input id="tgChatId" type="text" placeholder="1026720092" />
+    </div>
+    <div class="tg-modal-btns">
+      <button class="tg-cancel" onclick="closeTgModal()">Cancel</button>
+      <button class="tg-save" onclick="saveTgConfig()">Save & Test</button>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('watchlist')">👁 Watchlist <span class="tab-badge" id="badge-watchlist">—</span></button>
+  <button class="tab-btn" onclick="switchTab('ndx100')">📊 NDX 100 <span class="tab-badge" id="badge-ndx100">100</span></button>
+  <button class="tab-btn" onclick="switchTab('alerts')">🎯 Confluence Alerts <span class="tab-badge" id="badge-alerts">—</span></button>
+  <button class="tab-btn" onclick="switchTab('watchdog')">🔔 Watchdog <span class="tab-badge" id="badge-watchdog">—</span></button>
+</div>
+
+<!-- TAB 1: WATCHLIST -->
+<div class="tab-panel active" id="panel-watchlist">
+  <div class="ticker-bar">
+    <label>Tickers:</label>
+    <input class="ticker-input" id="tickerInput" type="text" placeholder="Add tickers e.g. AMZN, META" />
+    <button class="add-btn" onclick="addTickers()">Add</button>
+    <div class="ticker-chips" id="tickerChips"></div>
+    <div class="exits-filter-wrap">
+      <label>Max Exits:</label>
+      <input type="range" id="maxExitsSlider" min="0" max="5" value="5" oninput="updateExitsFilter(this.value)">
+      <span class="exits-val" id="maxExitsVal">Any</span>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th onclick="sortTable('wl','swingScore')">SWING RANK<span class="sa">↕</span></th>
+        <th onclick="sortTable('wl','ticker')">TICKER<span class="sa">↕</span></th>
+        <th onclick="sortTable('wl','price')">PRICE<span class="sa">↕</span></th>
+        <th onclick="sortTable('wl','chg')">CHG%<span class="sa">↕</span></th>
+        <th onclick="sortTable('wl','ratingN')">RATING<span class="sa">↕</span></th>
+        <th>SIGNAL</th>
+        <th onclick="sortTable('wl','exits')">EXITS<span class="sa">↕</span></th>
+        <th>MTF</th>
+        <th>S.TRAIL</th><th>CATCHER</th><th>TRACER</th>
+        <th onclick="sortTable('wl','trendHot')">TREND STR<span class="sa">↕</span></th>
+        <th onclick="sortTable('wl','volLabel')">VOLATILITY<span class="sa">↕</span></th>
+        <th onclick="sortTable('wl','sqzPct')">SQUEEZE<span class="sa">↕</span></th>
+        <th onclick="sortTable('wl','vwapDev')">VWAP<span class="sa">↕</span></th>
+      </tr></thead>
+      <tbody id="watchlistBody"><tr class="loading-row"><td colspan="15"><span class="pulse">⬤</span> Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 2: NDX 100 -->
+<div class="tab-panel" id="panel-ndx100">
+  <div class="ndx-toolbar">
+    <span class="ndx-status">Scanned: <span id="ndxScanned">0</span>/<span id="ndxTotal">100</span></span>
+    <div class="ndx-progress-wrap"><div class="ndx-progress-bar" id="ndxProgress"></div></div>
+    <div class="ndx-filter-btns">
+      <button class="ndx-filter active" data-f="all" onclick="setNdxFilter('all')">All</button>
+      <button class="ndx-filter" data-f="strong" onclick="setNdxFilter('strong')">⭐⭐⭐⭐⭐</button>
+      <button class="ndx-filter" data-f="bull" onclick="setNdxFilter('bull')">Bullish+</button>
+      <button class="ndx-filter" data-f="buy" onclick="setNdxFilter('buy')">BUY Signal</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th onclick="sortTable('ndx','swingScore')">SWING RANK<span class="sa">↕</span></th>
+        <th onclick="sortTable('ndx','ticker')">TICKER<span class="sa">↕</span></th>
+        <th onclick="sortTable('ndx','price')">PRICE<span class="sa">↕</span></th>
+        <th onclick="sortTable('ndx','chg')">CHG%<span class="sa">↕</span></th>
+        <th onclick="sortTable('ndx','ratingN')">RATING<span class="sa">↕</span></th>
+        <th>SIGNAL</th>
+        <th onclick="sortTable('ndx','exits')">EXITS<span class="sa">↕</span></th>
+        <th>MTF</th>
+        <th>S.TRAIL</th><th>CATCHER</th><th>TRACER</th>
+        <th onclick="sortTable('ndx','trendHot')">TREND STR<span class="sa">↕</span></th>
+        <th onclick="sortTable('ndx','volLabel')">VOLATILITY<span class="sa">↕</span></th>
+        <th onclick="sortTable('ndx','sqzPct')">SQUEEZE<span class="sa">↕</span></th>
+        <th onclick="sortTable('ndx','vwapDev')">VWAP<span class="sa">↕</span></th>
+      </tr></thead>
+      <tbody id="ndx100Body">
+        <tr><td colspan="15"><div class="ndx-empty">
+          <h3>📊 NDX 100 Scanner</h3>
+          <p>Scan all 100 Nasdaq-100 stocks ranked by Swing potential.</p>
+          <button class="ndx-start-btn" onclick="startNDXScan()">▶ Start NDX 100 Scan</button>
+        </div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 3: CONFLUENCE ALERTS -->
+<div class="tab-panel" id="panel-alerts">
+  <div class="alert-toolbar">
+    <label>Min confluence score:</label>
+    <select class="threshold-sel" id="alertThreshold">
+      <option value="6">6/8 — Good setup</option>
+      <option value="7" selected>7/8 — Strong setup</option>
+      <option value="8">8/8 — Perfect setup</option>
+    </select>
+    <label style="margin-left:8px">Source:</label>
+    <select class="threshold-sel" id="alertSource">
+      <option value="watchlist">Watchlist only</option>
+      <option value="ndx">NDX 100 (must scan first)</option>
+    </select>
+    <label style="margin-left:8px">Auto-scan:</label>
+    <select class="threshold-sel" id="autoAlertInterval">
+      <option value="0">Off</option>
+      <option value="5">Every 5m</option>
+      <option value="15" selected>Every 15m</option>
+      <option value="30">Every 30m</option>
+    </select>
+    <button class="alert-scan-btn" id="alertScanBtn" onclick="runConfluenceScan()">🎯 Run Confluence Scan</button>
+    <span id="autoAlertStatus" style="font-size:10px;color:var(--text-dim);font-family:IBM Plex Mono,monospace"></span>
+    <div class="alert-legend">
+      <span><span class="legend-dot" style="background:#00c896"></span>Grade A (7–8/8)</span>
+      <span><span class="legend-dot" style="background:#ffd600"></span>Grade B (6/8)</span>
+    </div>
+  </div>
+  <div class="alert-grid" id="alertGrid">
+    <div class="no-alerts" style="grid-column:1/-1">
+      <h3>🎯 Confluence Alert Engine</h3>
+      <p>This engine checks <strong>1H → 15m → 5m</strong> for every ticker.<br>
+      Each ticker gets scored across 8 conditions.<br>
+      Only setups passing your threshold appear here.</p>
+      <br>
+      <p style="font-size:11px;color:var(--text-dim)">Click <strong>"Run Confluence Scan"</strong> above to start.</p>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: STOCK WATCHDOG -->
+<div class="tab-panel" id="panel-watchdog">
+  <div class="watchdog-layout">
+
+    <!-- SIDEBAR: add tickers + settings -->
+    <div class="watchdog-sidebar">
+      <div class="watchdog-sidebar-title">🔔 Watching</div>
+      <div class="watchdog-add">
+        <input id="wdInput" type="text" placeholder="Add ticker e.g. NVDA" />
+        <button onclick="wdAddTicker()">+ Add</button>
+      </div>
+      <div class="watchdog-settings">
+        <div>
+          <label>Alert when score ≥</label>
+          <div class="wd-range-row">
+            <input type="range" id="wdScoreThresh" min="4" max="8" value="6" oninput="document.getElementById('wdScoreVal').textContent=this.value+'/8'">
+            <span class="wd-range-val" id="wdScoreVal">6/8</span>
+          </div>
+        </div>
+        <div>
+          <label>Required signal</label>
+          <select class="threshold-sel" id="wdSignalReq" style="width:100%;margin-top:4px">
+            <option value="any">Any signal</option>
+            <option value="bull" selected>BUY signal only</option>
+          </select>
+        </div>
+        <div>
+          <label>Must be above VWAP</label>
+          <select class="threshold-sel" id="wdVwapReq" style="width:100%;margin-top:4px">
+            <option value="yes" selected>Yes — required</option>
+            <option value="no">No — optional</option>
+          </select>
+        </div>
+        <div>
+          <label>Max exits (choppiness filter)</label>
+          <div class="wd-range-row">
+            <input type="range" id="wdMaxExits" min="0" max="5" value="3" oninput="document.getElementById('wdMaxExitsVal').textContent=this.value">
+            <span class="wd-range-val" id="wdMaxExitsVal">3</span>
+          </div>
+        </div>
+        <div>
+          <label>Check every</label>
+          <select class="threshold-sel" id="wdInterval" style="width:100%;margin-top:4px">
+            <option value="5">5 minutes</option>
+            <option value="15" selected>15 minutes</option>
+            <option value="30">30 minutes</option>
+          </select>
+        </div>
+        <div>
+          <label>Scan timeframe</label>
+          <select class="threshold-sel" id="wdTF" style="width:100%;margin-top:4px">
+            <option value="5m">5m</option>
+            <option value="15m" selected>15m</option>
+            <option value="1h">1h</option>
+          </select>
+        </div>
+      </div>
+      <div class="watchdog-ticker-list" id="wdTickerList">
+        <div style="padding:12px 14px;font-size:11px;color:var(--text-dim)">No tickers added yet.</div>
+      </div>
+      <button class="watchdog-start-btn" id="wdStartBtn" onclick="toggleWatchdog()">▶ Start Watchdog</button>
+    </div>
+
+    <!-- MAIN: live alert feed -->
+    <div class="watchdog-main">
+      <div class="watchdog-status-bar">
+        <span class="wd-countdown" id="wdCountdown">Status: <span>Idle</span></span>
+        <span class="wd-alert-count" id="wdAlertCount"></span>
+        <button class="wd-clear-btn" onclick="clearWdFeed()">Clear Feed</button>
+      </div>
+      <div class="watchdog-feed" id="wdFeed">
+        <div class="wd-empty">
+          <h3>🔔 Stock Watchdog</h3>
+          <p>Add tickers on the left, set your conditions,<br>then hit <strong>Start Watchdog</strong>.<br><br>
+          You'll get alerted here + on Telegram the moment<br>a stock transitions into a strong setup.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TRADE ANALYSIS MODAL -->
+<div class="ta-overlay" id="taOverlay" onclick="closeTAModal(event)">
+  <div class="ta-modal" id="taModal">
+    <div class="ta-header">
+      <div class="ta-header-left">
+        <span class="ta-ticker" id="taTickerLabel">—</span>
+        <span class="ta-price" id="taPriceLabel">—</span>
+        <span class="ta-chg" id="taChgLabel">—</span>
+      </div>
+      <button class="ta-close" onclick="closeTAModal()">✕</button>
+    </div>
+    <div class="ta-body" id="taBody"><!-- filled dynamically --></div>
+    <div class="ta-footer">
+      <span class="ta-footer-note" id="taFooterNote">—</span>
+      <button class="ta-tg-send" id="taTgBtn" onclick="sendTAAlert()">✈ Send to Telegram</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════
+const PROXY = 'https://yahoo-proxy.srimanthgada87.workers.dev';
+const TF_RANGE = {'5m':'1d','15m':'2d','1h':'5d','1d':'60d'};
+const TF_AUTO  = {'5m':5*60000,'15m':15*60000,'1h':60*60000,'1d':4*3600000};
+
+let currentTF = '15m';
+let utSens = 1.5; // UT Bot sensitivity — controls how many flips/exits occur
+let activeTab = 'watchlist';
+let autoTimer = null;
+
+let watchlistTickers = ['SBUX','CTSH','NVDA','GOOGL','MSFT','ORCL','TSLA','AAPL','NFLX','META'];
+
+const NDX100 = [
+  'AAPL','MSFT','NVDA','AMZN','META','GOOGL','TSLA','AVGO','COST','NFLX',
+  'ASML','AMD','PEP','ADBE','CSCO','QCOM','TMUS','INTU','LIN','AMAT',
+  'TXN','ISRG','AMGN','HON','BKNG','VRTX','REGN','ADP','PANW','SBUX',
+  'MDLZ','GILD','ADI','LRCX','MU','KLAC','SNPS','CDNS','MELI','PYPL',
+  'CTAS','ORLY','CEG','DASH','WDAY','FTNT','MRNA','ABNB','MAR','PCAR',
+  'ROST','ODFL','DXCM','KDP','PAYX','CPRT','MCHP','IDXX','BIIB','FAST',
+  'ON','EXC','GEHC','CTSH','VRSK','XEL','ZS','CRWD','TEAM','MNST',
+  'FANG','NXPI','DLTR','WBD','ANSS','ALGN','SWKS','VRSN','TTWO','WBA',
+  'OKTA','ZM','DOCU','DDOG','NET','SNOW','PLTR','RBLX','COIN','MDB',
+  'APP','CDNS','MRVL','ARM','SMCI','TTD','EXPE','IDXX','MTCH','LCID'
+];
+
+let wlResults=[], wlSortKey='swingScore', wlSortDir=-1;
+let maxExitsFilter = 5; // 5 = show all
+// Auto-alert state
+let autoAlertTimer = null;
+let alertedTickers = {}; // { ticker: timestamp } — dedup so we don't spam same alert
+let ndxResults=[], ndxSortKey='swingScore', ndxSortDir=-1, ndxFilter='all', ndxRunning=false, ndxScannedCount=0;
+
+// Telegram
+let tgToken = localStorage.getItem('lux_tg_token') || '';
+let tgChatId = localStorage.getItem('lux_tg_chat')  || '1026720092';
+function openTgModal(){ document.getElementById('tgToken').value=tgToken; document.getElementById('tgChatId').value=tgChatId; document.getElementById('tgModal').classList.add('open'); }
+function closeTgModal(){ document.getElementById('tgModal').classList.remove('open'); }
+async function saveTgConfig(){
+  tgToken=document.getElementById('tgToken').value.trim();
+  tgChatId=document.getElementById('tgChatId').value.trim();
+  localStorage.setItem('lux_tg_token',tgToken); localStorage.setItem('lux_tg_chat',tgChatId);
+  const ok = await sendTelegram('✅ LuxAlgo Screener — Telegram connected!');
+  updateTgStatus(ok); closeTgModal();
+}
+function updateTgStatus(ok){
+  const el=document.getElementById('tgStatus');
+  el.textContent=ok?'✅ Connected':'❌ Failed';
+  el.className='tg-status '+(ok?'ok':'off');
+}
+async function sendTelegram(msg){
+  if(!tgToken||!tgChatId) return false;
+  try{
+    const r=await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:tgChatId,text:msg,parse_mode:'HTML'})
+    });
+    return r.ok;
+  }catch{return false;}
+}
+if(tgToken){ updateTgStatus(true); }
+
+// ════════════════════════════════════════════
+// TABS / TF
+// ════════════════════════════════════════════
+function switchTab(tab){
+  activeTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById(`panel-${tab}`).classList.add('active');
+}
+function setTF(tf){
+  currentTF=tf;
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.toggle('active',b.dataset.tf===tf));
+  if(autoTimer) clearInterval(autoTimer);
+  autoTimer=setInterval(refreshActive,TF_AUTO[tf]);
+  refreshActive();
+}
+function refreshActive(){
+  if(activeTab==='watchlist') runWatchlistScan();
+  else if(activeTab==='ndx100'&&ndxRunning) startNDXScan();
+}
+
+// ════════════════════════════════════════════
+// CHIP UI
+// ════════════════════════════════════════════
+function updateUtSens(val){
+  utSens = parseFloat(val);
+  document.getElementById('utSensVal').textContent = val;
+}
+function updateExitsFilter(val){
+  maxExitsFilter = parseInt(val);
+  document.getElementById('maxExitsVal').textContent = val==='5'?'Any':val;
+  // Re-render watchlist with filter applied
+  if(wlResults.length) renderWLTable(sortRows(wlResults,wlSortKey,wlSortDir));
+}
+
+function renderChips(){
+  document.getElementById('tickerChips').innerHTML = watchlistTickers.map(t=>
+    `<div class="chip" onclick="removeTicker('${t}')">${t} <span style="font-size:9px;color:var(--text-dim)">✕</span></div>`
+  ).join('');
+}
+function addTickers(){
+  const raw=document.getElementById('tickerInput').value.toUpperCase().trim();
+  if(!raw) return;
+  raw.split(/[\s,]+/).filter(t=>t&&!watchlistTickers.includes(t)).forEach(t=>watchlistTickers.push(t));
+  document.getElementById('tickerInput').value='';
+  renderChips(); runWatchlistScan();
+}
+function removeTicker(t){ watchlistTickers=watchlistTickers.filter(x=>x!==t); renderChips(); runWatchlistScan(); }
+document.getElementById('tickerInput').addEventListener('keydown',e=>{if(e.key==='Enter')addTickers();});
+
+// ════════════════════════════════════════════
+// FETCH
+// ════════════════════════════════════════════
+async function fetchCandles(ticker, tf){
+  const sym=ticker==='SPX'?'%5EGSPC':encodeURIComponent(ticker);
+  const range=TF_RANGE[tf];
+  const yu=`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${tf}&range=${range}`;
+  const res=await fetch(`${PROXY}/?url=${encodeURIComponent(yu)}`);
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json=await res.json();
+  const chart=json?.chart?.result?.[0];
+  if(!chart) throw new Error('No data');
+  const q=chart.indicators?.quote?.[0]||{};
+  const valid=(q.close||[]).map((c,i)=>({c,h:(q.high||[])[i],l:(q.low||[])[i],v:(q.volume||[])[i]}))
+                           .filter(x=>x.c!=null&&x.h!=null&&x.l!=null);
+  return{valid,regularMarketPrice:chart.meta?.regularMarketPrice,prevClose:chart.meta?.chartPreviousClose||chart.meta?.previousClose};
+}
+
+async function fetchVWAP(ticker){
+  const sym=ticker==='SPX'?'%5EGSPC':encodeURIComponent(ticker);
+  const yu=`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1m&range=1d`;
+  try{
+    const res=await fetch(`${PROXY}/?url=${encodeURIComponent(yu)}`);
+    if(!res.ok) return null;
+    const json=await res.json();
+    const chart=json?.chart?.result?.[0];
+    if(!chart) return null;
+    const q=chart.indicators?.quote?.[0]||{};
+    const candles=(q.close||[]).map((c,i)=>({c,h:(q.high||[])[i],l:(q.low||[])[i],v:(q.volume||[])[i]}))
+                               .filter(x=>x.c!=null&&x.v!=null&&x.v>0);
+    return computeVWAP(candles);
+  }catch{return null;}
+}
+
+// ════════════════════════════════════════════
+// INDICATORS
+// ════════════════════════════════════════════
+function ema(arr,p){const k=2/(p+1);let e=arr[0];const o=[e];for(let i=1;i<arr.length;i++){e=arr[i]*k+e*(1-k);o.push(e);}return o;}
+function sma(arr,p){return arr.map((_,i)=>i<p-1?null:arr.slice(i-p+1,i+1).reduce((a,b)=>a+b,0)/p);}
+function rsi(closes,p=14){
+  if(closes.length<p+1)return 50;
+  let g=0,l=0;for(let i=1;i<=p;i++){const d=closes[i]-closes[i-1];d>0?g+=d:l-=d;}
+  let ag=g/p,al=l/p;
+  for(let i=p+1;i<closes.length;i++){const d=closes[i]-closes[i-1];ag=(ag*(p-1)+Math.max(d,0))/p;al=(al*(p-1)+Math.max(-d,0))/p;}
+  return al===0?100:100-100/(1+ag/al);
+}
+function atrCalc(candles,p=14){
+  const trs=candles.map((c,i)=>i===0?c.h-c.l:Math.max(c.h-c.l,Math.abs(c.h-candles[i-1].c),Math.abs(c.l-candles[i-1].c)));
+  let a=trs.slice(0,p).reduce((s,v)=>s+v,0)/p;
+  for(let i=p;i<trs.length;i++)a=(a*(p-1)+trs[i])/p;
+  return a;
+}
+function bbWidth(closes,p=20,m=2){
+  const sm=sma(closes,p);const last=sm.length-1;if(sm[last]==null)return 0;
+  const sl=closes.slice(last-p+1,last+1);const mean=sm[last];
+  const std=Math.sqrt(sl.reduce((s,v)=>s+Math.pow(v-mean,2),0)/p);
+  return((mean+m*std)-(mean-m*std))/mean*100;
+}
+// Returns true if BB width has been INCREASING over last lookback candles
+function isSqzExpanding(closes,p=20,m=2,lookback=3){
+  if(closes.length<p+lookback)return false;
+  const widths=[];
+  for(let offset=lookback;offset>=0;offset--){
+    const slice=closes.slice(0,closes.length-offset);
+    const sm2=sma(slice,p);const last2=sm2.length-1;
+    if(sm2[last2]==null){widths.push(0);continue;}
+    const sl2=slice.slice(last2-p+1,last2+1);const mean2=sm2[last2];
+    const std2=Math.sqrt(sl2.reduce((s,v)=>s+Math.pow(v-mean2,2),0)/p);
+    widths.push(((mean2+m*std2)-(mean2-m*std2))/mean2*100);
+  }
+  let exp=true;
+  for(let i=1;i<widths.length;i++){if(widths[i]<=widths[i-1]){exp=false;break;}}
+  return exp;
+}
+function utBot(candles){
+  const closes=candles.map(c=>c.c);const atrVal=atrCalc(candles,10);const nLoss=utSens*atrVal;
+  let xStop=closes[0],pos=0,exits=0,lastSig=null;
+  for(let i=1;i<closes.length;i++){
+    const prev=xStop,c=closes[i],pc=closes[i-1];
+    if(c>prev&&pc>prev)      xStop=Math.max(prev,c-nLoss);
+    else if(c<prev&&pc<prev) xStop=Math.min(prev,c+nLoss);
+    else if(c>prev)          xStop=c-nLoss;
+    else                     xStop=c+nLoss;
+    const above=closes[i-1]<prev&&c>xStop;
+    const below=closes[i-1]>prev&&c<xStop;
+    if(above){if(pos<0)exits++;pos=1;lastSig='bull';}
+    if(below){if(pos>0)exits++;pos=-1;lastSig='bear';}
+  }
+  return{signal:lastSig,exits:Math.min(exits,5)};
+}
+function computeVWAP(candles){
+  if(!candles.length)return null;
+  let pv=0,vol=0,pv2=0;
+  for(const c of candles){const h3=(c.h+c.l+c.c)/3;pv+=h3*c.v;vol+=c.v;pv2+=h3*h3*c.v;}
+  if(vol===0)return null;
+  const vwap=pv/vol;
+  const std=Math.sqrt(Math.max(pv2/vol-vwap*vwap,0));
+  return{vwap,upper1:vwap+std,lower1:vwap-std,upper2:vwap+2*std,lower2:vwap-2*std};
+}
+
+// ════════════════════════════════════════════
+// ANALYZE SINGLE TF
+// ════════════════════════════════════════════
+function analyzeTF(candles, price, prevClose, vwapData){
+  const closes=candles.map(c=>c.c);
+  const p=price??closes[closes.length-1];
+  const chg=prevClose?(p-prevClose)/prevClose*100:0;
+  const e5=ema(closes,5),e20=ema(closes,20),e50=ema(closes,50);
+  const last=closes.length-1;
+  const lastE5=e5[last],lastE20=e20[last],lastE50=e50[last];
+  const rsiVal=rsi(closes,14);
+  const atrVal=atrCalc(candles,14);
+  const atrPct=atrVal/p*100;
+  const{signal,exits}=utBot(candles);
+  let vwapDev=0,vwapLabel='—',vwapCls='vwap-below',aboveVwap=false;
+  if(vwapData){
+    const{vwap,upper1,lower1,upper2,lower2}=vwapData;
+    vwapDev=(p-vwap)/vwap*100;aboveVwap=p>vwap;
+    if(p>upper2){vwapLabel='▲▲ +2σ';vwapCls='vwap-above2';}
+    else if(p>upper1){vwapLabel='▲ +1σ';vwapCls='vwap-above1';}
+    else if(p>vwap){vwapLabel='▲ Above';vwapCls='vwap-above';}
+    else if(p>lower1){vwapLabel='▼ Below';vwapCls='vwap-below';}
+    else if(p>lower2){vwapLabel='▼ -1σ';vwapCls='vwap-below1';}
+    else{vwapLabel='▼▼ -2σ';vwapCls='vwap-below2';}
+  }
+  let bullCount=0;
+  if(p>lastE5)bullCount++;if(p>lastE20)bullCount++;if(p>lastE50)bullCount++;
+  if(lastE5>lastE20)bullCount++;if(rsiVal>55)bullCount++;if(aboveVwap)bullCount++;
+  const ratingN=bullCount;
+  const rating=bullCount>=5?'Strong Bullish':bullCount>=3?'Bullish':bullCount<=1?'Strong Bearish':'Bearish';
+  const smartTrail=p>lastE20?'Bullish':'Bearish';
+  const catcher=rsiVal>50?'Bullish':rsiVal<40?'Bearish':'Neutral';
+  const tracer=lastE5>lastE20?'Bullish':'Bearish';
+  const trendHot=lastE50?(p-lastE50)/lastE50*100:0;
+  const trendStr=Math.abs(trendHot);
+  let volLabel='Moderate';if(atrPct<0.4)volLabel='Low';else if(atrPct>0.9)volLabel='High';
+  const sqzPct=Math.min(99.99,bbWidth(closes)*3).toFixed(2);
+  // Swing rank
+  let score=0;
+  if(p>lastE20)score++;if(lastE5>lastE20&&lastE20>lastE50)score++;
+  if(vwapData){if(p>vwapData.vwap)score++;if(p>vwapData.upper1)score++;}
+  if(signal==='bull')score+=2;
+  if(rsiVal>=50&&rsiVal<=65)score++;
+  if(parseFloat(sqzPct)<30)score++;
+  if(atrPct>=0.3&&atrPct<=1.2)score++;
+  const swingStars=score>=8?5:score>=6?4:score>=4?3:score>=2?2:1;
+  return{price:p,chg,rating,ratingN,signal,exits,smartTrail,catcher,tracer,trendStr,trendHot,volLabel,sqzPct,sqzExpanding:isSqzExpanding(closes),vwapDev,vwapLabel,vwapCls,aboveVwap,rsiVal,lastE5,lastE20,lastE50,atrPct,swingScore:score,swingStars};
+}
+
+function computeRow(ticker,candles,regularMarketPrice,prevClose,vwapData){
+  return{ticker,...analyzeTF(candles,regularMarketPrice,prevClose,vwapData)};
+}
+
+// ════════════════════════════════════════════
+// MTF CONFLUENCE CHECK (8 conditions)
+// ════════════════════════════════════════════
+// Returns score 0-8 and detail for each check
+function mtfConfluence(tf1h, tf15m, tf5m){
+  const checks = [];
+  const add = (label, pass) => checks.push({label, pass});
+
+  // 1. 1H EMA stack bullish
+  add('1H EMA stack bullish', tf1h && tf1h.lastE5>tf1h.lastE20 && tf1h.lastE20>tf1h.lastE50);
+  // 2. 1H above VWAP
+  add('1H Above VWAP', tf1h && tf1h.aboveVwap);
+  // 3. 1H UT Bot = BUY
+  add('1H UT Bot = BUY', tf1h && tf1h.signal==='bull');
+  // 4. 15m pulled back to EMA20 (within 1% of EMA20)
+  add('15m Near EMA20 (pullback)', tf15m && Math.abs((tf15m.price-tf15m.lastE20)/tf15m.lastE20*100)<1.2);
+  // 5. 15m above VWAP
+  add('15m Above VWAP', tf15m && tf15m.aboveVwap);
+  // 6. 15m squeeze expanding — BB width increasing over last 3 candles (true expansion)
+  add('15m Squeeze Expanding', tf15m && tf15m.sqzExpanding);
+  // 7. 5m UT Bot = BUY (entry trigger)
+  add('5m UT Bot BUY signal', tf5m && tf5m.signal==='bull');
+  // 8. 5m above VWAP
+  add('5m Above VWAP', tf5m && tf5m.aboveVwap);
+
+  const score = checks.filter(c=>c.pass).length;
+  return {score, checks};
+}
+
+// ════════════════════════════════════════════
+// RENDER HELPERS
+// ════════════════════════════════════════════
+function swingRankHtml(stars,score){
+  return `<span class="swing-rank r${stars}"><span class="stars">${'★'.repeat(stars)}${'☆'.repeat(5-stars)}</span><span class="swing-score">${score}/9</span></span>`;
+}
+function ratingHtml(r){
+  const cls=r==='Strong Bullish'?'strong-bull':r==='Bullish'?'bull':r==='Strong Bearish'?'strong-bear':'bear';
+  return `<span class="rating-tag ${cls}">${r.includes('Bull')?'▲':'▼'} ${r}</span>`;
+}
+function signalHtml(s){
+  if(s==='bull')return`<span class="sig-box bull-up">▲</span>`;
+  if(s==='bear')return`<span class="sig-box bear-dn">▼</span>`;
+  return`<span class="sig-box empty">—</span>`;
+}
+function trailHtml(s){
+  const cls=s==='Bullish'?'bull':s==='Bearish'?'bear':'neutral';
+  return`<span class="trail-tag ${cls}">${s==='Bullish'?'▲':s==='Bearish'?'▼':'—'} ${s}</span>`;
+}
+function trendHtml(str,hot){
+  const icon=Math.abs(hot)>3?(hot>0?'🔥':'❄️'):(hot>0?'📈':'📉');
+  const cls=Math.abs(hot)>3?(hot>0?'fire':'snow'):'mild';
+  return`<span class="trend-wrap"><span>${icon}</span><span class="trend-pct ${cls}">${str.toFixed(2)}%</span></span>`;
+}
+function volHtml(l){
+  return`<span class="vol-tag ${l==='Low'?'low':l==='Moderate'?'mod':'high'}">${l==='Low'?'⚠️':l==='Moderate'?'❄️':'🔥'} ${l}</span>`;
+}
+function sqzHtml(pct){
+  return`<span class="sqz-bar-wrap"><span class="sqz-pct">${pct}%</span><span class="sqz-bar" style="width:${Math.min(60,parseFloat(pct)*.6)}px"></span></span>`;
+}
+function vwapHtml(label,dev,cls){
+  if(label==='—')return`<span style="color:var(--text-dim);font-size:10px">—</span>`;
+  return`<span class="vwap-wrap"><span class="vwap-label ${cls}">${label}</span><span class="vwap-dev ${cls}">${dev>=0?'+':''}${dev.toFixed(2)}%</span></span>`;
+}
+function mtfBadgeHtml(row){
+  // Quick MTF summary from watchlist row — we only have currentTF data here
+  // Show confluence hint based on available signals
+  const bullSigs=[row.signal==='bull',row.aboveVwap,row.ratingN>=4,row.swingStars>=4];
+  const cnt=bullSigs.filter(Boolean).length;
+  const cls=cnt>=3?'mtf-high':cnt>=2?'mtf-med':'mtf-low';
+  const label=cnt>=3?'MTF ✓':cnt>=2?'PART':'WEAK';
+  return`<span class="mtf-badge ${cls}">${label}</span>`;
+}
+function renderRow(row,tf){
+  const{ticker,price,chg,rating,signal,exits,smartTrail,catcher,tracer,trendStr,trendHot,volLabel,sqzPct,vwapDev,vwapLabel,vwapCls,swingScore,swingStars}=row;
+  const cc=chg>=0?'up':'dn';
+  const safeRow=encodeURIComponent(JSON.stringify(row));
+  return`<tr class="loaded" onclick="openTAModal('${ticker}',decodeURIComponent('${safeRow}'))" title="Click for trade analysis">
+    <td>${swingRankHtml(swingStars,swingScore)}</td>
+    <td class="cell-ticker">${ticker}<span class="tf"> • ${tf}</span></td>
+    <td class="cell-price">${price.toFixed(2)}</td>
+    <td class="cell-chg ${cc}">${chg>=0?'+':''}${chg.toFixed(2)}%</td>
+    <td>${ratingHtml(rating)}</td>
+    <td>${signalHtml(signal)}</td>
+    <td>${exits>0?`<span class="exit-badge">${exits}</span>`:'<span style="color:var(--text-dim)">—</span>'}</td>
+    <td>${mtfBadgeHtml(row)}</td>
+    <td>${trailHtml(smartTrail)}</td><td>${trailHtml(catcher)}</td><td>${trailHtml(tracer)}</td>
+    <td>${trendHtml(trendStr,trendHot)}</td>
+    <td>${volHtml(volLabel)}</td>
+    <td>${sqzHtml(sqzPct)}</td>
+    <td>${vwapHtml(vwapLabel,vwapDev,vwapCls)}</td>
+  </tr>`;
+}
+
+// ════════════════════════════════════════════
+// CONFLUENCE TRADE CARD RENDER
+// ════════════════════════════════════════════
+function renderTradeCard(ticker, tf1h, tf15m, tf5m, mtf, price){
+  const {score, checks} = mtf;
+  const grade = score>=7?'A':score>=6?'B':'C';
+  const chg = tf15m?.chg??0;
+  const atr = tf15m ? atrCalc([],14) : 0;
+  // Entry/Stop/Target based on 15m data
+  const entry = price;
+  const stopPct = tf15m?.atrPct ? tf15m.atrPct * 1.5 : 0.8;
+  const stop  = +(price*(1-stopPct/100)).toFixed(2);
+  const t1    = +(price*(1+stopPct/100*2)).toFixed(2);
+  const t2    = +(price*(1+stopPct/100*4)).toFixed(2);
+
+  const tfBlock = (label, data) => {
+    if(!data) return`<div class="mtf-tf-block"><div class="mtf-tf-label">${label}</div><div class="mtf-tf-rating neutral">No data</div></div>`;
+    const rc=data.ratingN>=4?'bull':data.ratingN<=2?'bear':'neutral';
+    return`<div class="mtf-tf-block">
+      <div class="mtf-tf-label">${label}</div>
+      <div class="mtf-tf-rating ${rc}">${data.rating}</div>
+      <div class="mtf-tf-checks">
+        <div class="mtf-check ${data.signal==='bull'?'pass':'fail'}"><span class="ck">${data.signal==='bull'?'✅':'⬜'}</span> UT Bot ${data.signal==='bull'?'BUY':'—'}</div>
+        <div class="mtf-check ${data.aboveVwap?'pass':'fail'}"><span class="ck">${data.aboveVwap?'✅':'⬜'}</span> Above VWAP</div>
+        <div class="mtf-check ${data.lastE5>data.lastE20?'pass':'fail'}"><span class="ck">${data.lastE5>data.lastE20?'✅':'⬜'}</span> EMA5>EMA20</div>
+      </div>
+    </div>`;
+  };
+
+  const checklistHtml = checks.map(c=>`
+    <div class="check-item ${c.pass?'pass':'fail'}">
+      <span class="check-icon">${c.pass?'✅':'⬜'}</span>
+      <span>${c.label}</span>
+    </div>`).join('');
+
+  return`<div class="trade-card grade-${grade}">
+    <div class="card-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="card-ticker">${ticker}</span>
+        <span class="card-price">$${price.toFixed(2)}</span>
+        <span class="card-chg ${chg>=0?'up':'dn'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span>
+      </div>
+      <span class="card-grade ${grade}">Grade ${grade} — ${score}/8</span>
+    </div>
+    <div class="card-body">
+      <div class="mtf-grid">
+        ${tfBlock('1H Bias',tf1h)}
+        ${tfBlock('15m Setup',tf15m)}
+        ${tfBlock('5m Entry',tf5m)}
+      </div>
+      <div class="checklist">${checklistHtml}</div>
+      <div class="trade-box">
+        <div class="trade-box-title">📐 Suggested Trade Levels</div>
+        <div class="trade-levels">
+          <div class="trade-level">
+            <div class="trade-level-label">ENTRY</div>
+            <div class="trade-level-val entry">$${entry.toFixed(2)}</div>
+            <div style="font-size:9px;color:var(--text-dim)">5m BUY close</div>
+          </div>
+          <div class="trade-level">
+            <div class="trade-level-label">STOP LOSS</div>
+            <div class="trade-level-val stop">$${stop.toFixed(2)}</div>
+            <div style="font-size:9px;color:var(--text-dim)">Below VWAP / 1.5×ATR</div>
+          </div>
+          <div class="trade-level">
+            <div class="trade-level-label">TARGET T1 / T2</div>
+            <div class="trade-level-val target">$${t1.toFixed(2)} / $${t2.toFixed(2)}</div>
+            <div style="font-size:9px;color:var(--text-dim)">2R / 4R</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div class="confluence-score">
+        Confluence: <span class="score-val">${score}</span><span class="score-max">/8</span>
+      </div>
+      <div class="card-actions">
+        <button class="card-tg-btn" onclick="sendAlertCard('${ticker}',${score},'${grade}',${price.toFixed(2)},${entry.toFixed(2)},${stop.toFixed(2)},${t1.toFixed(2)},${t2.toFixed(2)})" ${tgToken?'':'disabled'}>
+          ✈ Send Alert
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function sendAlertCard(ticker,score,grade,price,entry,stop,t1,t2){
+  const msg=`🎯 <b>CONFLUENCE ALERT — ${ticker}</b>\n`+
+    `Grade: <b>${grade}</b> | Score: <b>${score}/8</b>\n\n`+
+    `💰 Price: <b>$${price}</b>\n`+
+    `📈 Entry: <b>$${entry}</b>\n`+
+    `🛑 Stop: <b>$${stop}</b>\n`+
+    `🎯 T1: <b>$${t1}</b> | T2: <b>$${t2}</b>\n\n`+
+    `⏰ ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} EST`;
+  await sendTelegram(msg);
+}
+
+// ════════════════════════════════════════════
+// CONFLUENCE SCAN
+// ════════════════════════════════════════════
+// ════════════════════════════════════════════
+// AUTO-ALERT LOOP
+// ════════════════════════════════════════════
+function setAutoAlert(){
+  if(autoAlertTimer){ clearInterval(autoAlertTimer); autoAlertTimer=null; }
+  const mins=parseInt(document.getElementById('autoAlertInterval').value);
+  const statusEl=document.getElementById('autoAlertStatus');
+  if(mins===0){ statusEl.textContent='Auto-scan: Off'; return; }
+  statusEl.textContent=`⏳ Next scan in ${mins}m`;
+  let remaining=mins*60;
+  const countdown=setInterval(()=>{
+    remaining--;
+    const m=Math.floor(remaining/60),s=remaining%60;
+    statusEl.textContent=`⏳ Next scan in ${m}:${s.toString().padStart(2,'0')}`;
+    if(remaining<=0){ clearInterval(countdown); }
+  },1000);
+  autoAlertTimer=setInterval(async()=>{
+    clearInterval(countdown);
+    remaining=mins*60;
+    const newCountdown=setInterval(()=>{
+      remaining--;
+      const m=Math.floor(remaining/60),s=remaining%60;
+      statusEl.textContent=`⏳ Next scan in ${m}:${s.toString().padStart(2,'0')}`;
+      if(remaining<=0) clearInterval(newCountdown);
+    },1000);
+    await runConfluenceScan(true); // silent=true, no UI loading flash
+  }, mins*60*1000);
+}
+document.getElementById('autoAlertInterval').addEventListener('change', setAutoAlert);
+
+async function runConfluenceScan(silent=false){
+  const btn=document.getElementById('alertScanBtn');
+  btn.disabled=true; btn.textContent='⏳ Scanning…';
+  const threshold=parseInt(document.getElementById('alertThreshold').value);
+  const source=document.getElementById('alertSource').value;
+  const tickers=source==='ndx'?(ndxResults.length?ndxResults.map(r=>r.ticker):watchlistTickers):watchlistTickers;
+
+  if(!silent) document.getElementById('alertGrid').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim)"><span class="pulse">⬤</span> Scanning ${tickers.length} tickers across 1H, 15m, 5m…</div>`;
+  document.getElementById('badge-alerts').textContent='…';
+  document.getElementById('badge-alerts').className='tab-badge scanning';
+
+  const alerts=[];
+
+  await Promise.allSettled(tickers.map(async ticker=>{
+    try{
+      // Fetch all 3 TFs + VWAP simultaneously
+      const [d1h, d15m, d5m, vwapData] = await Promise.all([
+        fetchCandles(ticker,'1h'),
+        fetchCandles(ticker,'15m'),
+        fetchCandles(ticker,'5m'),
+        fetchVWAP(ticker)
+      ]);
+      if(d15m.valid.length<20) return;
+
+      const a1h  = d1h.valid.length>=10  ? analyzeTF(d1h.valid,  d1h.regularMarketPrice,  d1h.prevClose,  vwapData) : null;
+      const a15m = d15m.valid.length>=20  ? analyzeTF(d15m.valid, d15m.regularMarketPrice, d15m.prevClose, vwapData) : null;
+      const a5m  = d5m.valid.length>=10   ? analyzeTF(d5m.valid,  d5m.regularMarketPrice,  d5m.prevClose,  vwapData) : null;
+
+      const mtf = mtfConfluence(a1h, a15m, a5m);
+      if(mtf.score>=threshold){
+        const price = d15m.regularMarketPrice ?? d15m.valid[d15m.valid.length-1].c;
+        alerts.push({ticker, a1h, a15m, a5m, mtf, price, score:mtf.score});
+      }
+    }catch(e){ /* skip */ }
+  }));
+
+  // Sort by score desc
+  alerts.sort((a,b)=>b.score-a.score);
+
+  const badgeEl=document.getElementById('badge-alerts');
+  if(!alerts.length){
+    document.getElementById('alertGrid').innerHTML=`<div class="no-alerts" style="grid-column:1/-1">
+      <h3>No setups found</h3>
+      <p>No tickers passed ${threshold}/8 confluence conditions.<br>Try lowering the threshold or scan NDX 100.</p>
+    </div>`;
+    badgeEl.textContent='0'; badgeEl.className='tab-badge';
+  } else {
+    document.getElementById('alertGrid').innerHTML=alerts.map(a=>
+      renderTradeCard(a.ticker,a.a1h,a.a15m,a.a5m,a.mtf,a.price)
+    ).join('');
+    badgeEl.textContent=alerts.length; badgeEl.className='tab-badge alert';
+
+    // Send Telegram for NEW alerts only (deduplicated — 60min cooldown per ticker)
+    if(tgToken && alerts.length){
+      const now=Date.now();
+      const COOLDOWN=60*60*1000; // 1 hour cooldown per ticker
+      const newAlerts=alerts.filter(a=>{
+        const lastSent=alertedTickers[a.ticker]||0;
+        return (now-lastSent) > COOLDOWN;
+      });
+      for(const top of newAlerts){
+        alertedTickers[top.ticker]=now;
+        const price=top.price.toFixed(2);
+        const stopPct=top.a15m?.atrPct?top.a15m.atrPct*1.5:0.8;
+        await sendAlertCard(
+          top.ticker, top.score,
+          top.score>=7?'A':top.score>=6?'B':'C',
+          parseFloat(price),parseFloat(price),
+          +(parseFloat(price)*(1-stopPct/100)).toFixed(2),
+          +(parseFloat(price)*(1+stopPct/100*2)).toFixed(2),
+          +(parseFloat(price)*(1+stopPct/100*4)).toFixed(2)
+        );
+      }
+      if(newAlerts.length===0 && silent){
+        // All alerts already sent — just update status quietly
+        document.getElementById('autoAlertStatus') &&
+          (document.getElementById('autoAlertStatus').textContent += ' ✓');
+      }
+    }
+  }
+  btn.disabled=false; btn.textContent='🎯 Run Confluence Scan';
+}
+
+// ════════════════════════════════════════════
+// SORTING
+// ════════════════════════════════════════════
+const R_ORDER={'Strong Bullish':4,'Bullish':3,'Bearish':2,'Strong Bearish':1};
+function sortRows(rows,key,dir){
+  return[...rows].sort((a,b)=>{
+    let av=a[key],bv=b[key];
+    if(key==='ratingN'){av=a.ratingN;bv=b.ratingN;}
+    if(key==='volLabel'){av={'Low':1,'Moderate':2,'High':3}[av]||0;bv={'Low':1,'Moderate':2,'High':3}[bv]||0;}
+    if(key==='sqzPct'){av=parseFloat(av);bv=parseFloat(bv);}
+    if(typeof av==='string')return dir*av.localeCompare(bv);
+    return dir*(av-bv);
+  });
+}
+function sortTable(tbl,key){
+  if(tbl==='wl'){
+    wlSortDir=wlSortKey===key?-wlSortDir:-1; wlSortKey=key;
+    renderWLTable(sortRows(wlResults,key,wlSortDir));
+  } else {
+    ndxSortDir=ndxSortKey===key?-ndxSortDir:-1; ndxSortKey=key;
+    renderNDXTable();
+  }
+}
+
+// ════════════════════════════════════════════
+// WATCHLIST SCAN
+// ════════════════════════════════════════════
+async function runWatchlistScan(){
+  const btn=document.getElementById('refreshBtn'); btn.classList.add('spinning');
+  const badge=document.getElementById('badge-watchlist'); badge.textContent='…'; badge.className='tab-badge scanning';
+  document.getElementById('watchlistBody').innerHTML=`<tr class="loading-row"><td colspan="15"><span class="pulse">⬤</span> Scanning ${watchlistTickers.length} tickers on ${currentTF}…</td></tr>`;
+
+  const results=await Promise.allSettled(watchlistTickers.map(async t=>{
+    const[cd,vd]=await Promise.all([fetchCandles(t,currentTF),fetchVWAP(t)]);
+    if(cd.valid.length<20)throw new Error('Insufficient candles');
+    return computeRow(t,cd.valid,cd.regularMarketPrice,cd.prevClose,vd);
+  }));
+
+  wlResults=[];
+  const errRows=[];
+  results.forEach((r,i)=>{
+    if(r.status==='fulfilled') wlResults.push(r.value);
+    else errRows.push(`<tr class="loaded"><td>—</td><td class="cell-ticker">${watchlistTickers[i]}<span class="tf"> • ${currentTF}</span></td><td colspan="13" class="err-cell">⚠ ${r.reason?.message||'Error'}</td></tr>`);
+  });
+
+  renderWLTable(sortRows(wlResults,wlSortKey,wlSortDir), errRows.join(''));
+  badge.textContent=wlResults.length; badge.className='tab-badge done';
+  btn.classList.remove('spinning');
+  document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function renderWLTable(sorted,errHtml=''){
+  const filtered = maxExitsFilter < 5 ? sorted.filter(r => r.exits <= maxExitsFilter) : sorted;
+  document.getElementById('watchlistBody').innerHTML=filtered.map(r=>renderRow(r,currentTF)).join('')+errHtml;
+}
+
+// ════════════════════════════════════════════
+// NDX 100 SCAN
+// ════════════════════════════════════════════
+async function startNDXScan(){
+  if(ndxRunning)return;
+  ndxRunning=true; ndxResults=[]; ndxScannedCount=0;
+  document.getElementById('badge-ndx100').textContent='…';
+  document.getElementById('badge-ndx100').className='tab-badge scanning';
+  document.getElementById('ndxTotal').textContent=NDX100.length;
+  document.getElementById('ndxScanned').textContent=0;
+  document.getElementById('ndxProgress').style.width='0%';
+  document.getElementById('ndx100Body').innerHTML=`<tr class="loading-row"><td colspan="15"><span class="pulse">⬤</span> Scanning NDX 100 on ${currentTF}…</td></tr>`;
+
+  for(let i=0;i<NDX100.length;i+=5){
+    const batch=NDX100.slice(i,i+5);
+    await Promise.allSettled(batch.map(async t=>{
+      try{
+        const[cd,vd]=await Promise.all([fetchCandles(t,currentTF),fetchVWAP(t)]);
+        if(cd.valid.length>=20) ndxResults.push(computeRow(t,cd.valid,cd.regularMarketPrice,cd.prevClose,vd));
+      }catch{}
+      ndxScannedCount++;
+      document.getElementById('ndxScanned').textContent=ndxScannedCount;
+      document.getElementById('ndxProgress').style.width=(ndxScannedCount/NDX100.length*100)+'%';
+    }));
+    renderNDXTable();
+    await new Promise(r=>setTimeout(r,200));
+  }
+  document.getElementById('badge-ndx100').textContent=ndxResults.length;
+  document.getElementById('badge-ndx100').className='tab-badge done';
+  ndxRunning=false;
+}
+function setNdxFilter(f){
+  ndxFilter=f;
+  document.querySelectorAll('.ndx-filter').forEach(b=>b.classList.toggle('active',b.dataset.f===f));
+  renderNDXTable();
+}
+function renderNDXTable(){
+  let rows=ndxResults;
+  if(ndxFilter==='strong') rows=rows.filter(r=>r.swingStars===5);
+  else if(ndxFilter==='bull') rows=rows.filter(r=>r.ratingN>=3);
+  else if(ndxFilter==='buy')  rows=rows.filter(r=>r.signal==='bull');
+  rows=sortRows(rows,ndxSortKey,ndxSortDir);
+  if(!rows.length){document.getElementById('ndx100Body').innerHTML=`<tr class="loading-row"><td colspan="15">No results for current filter.</td></tr>`;return;}
+  document.getElementById('ndx100Body').innerHTML=rows.map(r=>renderRow(r,currentTF)).join('');
+}
+
+
+// ════════════════════════════════════════════
+// TRADE ANALYSIS MODAL
+// ════════════════════════════════════════════
+let currentTARow = null;
+
+function openTAModal(ticker, rowJson){
+  const row = JSON.parse(rowJson);
+  currentTARow = row;
+  const {price,chg,rating,ratingN,signal,exits,smartTrail,catcher,tracer,
+         trendHot,volLabel,sqzPct,sqzExpanding,vwapDev,vwapLabel,
+         aboveVwap,rsiVal,lastE5,lastE20,lastE50,atrPct,swingScore,swingStars} = row;
+
+  // Header
+  document.getElementById('taTickerLabel').textContent = ticker;
+  document.getElementById('taPriceLabel').textContent  = '$'+price.toFixed(2);
+  const chgEl = document.getElementById('taChgLabel');
+  chgEl.textContent = (chg>=0?'+':'')+chg.toFixed(2)+'%';
+  chgEl.className = 'ta-chg '+(chg>=0?'up':'dn');
+
+  // ── Build Pros (reasons TO take) ──
+  const pros = [];
+  const cons = [];
+
+  // EMA stack
+  if(lastE5>lastE20 && lastE20>lastE50)
+    pros.push({icon:'📈', text:'EMA stack fully bullish — EMA5 > EMA20 > EMA50. Trend is aligned across all MAs.'});
+  else if(lastE5>lastE20)
+    pros.push({icon:'📊', text:'EMA5 > EMA20 — short-term momentum is bullish, though EMA50 not yet aligned.'});
+  else
+    cons.push({icon:'📉', text:'EMA stack not aligned — price or short-term EMAs are below longer MAs. Trend is mixed or bearish.'});
+
+  // VWAP
+  if(aboveVwap){
+    if(vwapDev>1.5) pros.push({icon:'🔝', text:`Price is ${vwapDev.toFixed(2)}% above VWAP (${vwapLabel}). Strong bullish but watch for mean reversion.`});
+    else            pros.push({icon:'✅', text:`Price is above VWAP (${vwapDev>0?'+':''}${vwapDev.toFixed(2)}%). Institutional bias is bullish.`});
+  } else {
+    if(vwapDev < -1.5) cons.push({icon:'🔻', text:`Price is ${Math.abs(vwapDev).toFixed(2)}% below VWAP (${vwapLabel}). Bears in control — avoid longs.`});
+    else               cons.push({icon:'⚠️', text:`Price is below VWAP (${vwapDev.toFixed(2)}%). Institutional bias is bearish. Wait for reclaim.`});
+  }
+
+  // UT Bot
+  if(signal==='bull') pros.push({icon:'🚀', text:`UT Bot fired a BUY signal. Trailing stop flipped bullish — momentum confirmed.`});
+  else if(signal==='bear') cons.push({icon:'🛑', text:`UT Bot fired a SELL signal. Trailing stop flipped bearish — do not enter long.`});
+  else cons.push({icon:'⏳', text:`UT Bot has no active signal. No confirmed entry trigger yet — wait for signal.`});
+
+  // RSI
+  if(rsiVal>=50 && rsiVal<=65) pros.push({icon:'💪', text:`RSI at ${rsiVal.toFixed(1)} — in the bullish sweet spot (50–65). Not overbought, momentum present.`});
+  else if(rsiVal>65) cons.push({icon:'🌡️', text:`RSI at ${rsiVal.toFixed(1)} — approaching overbought territory. Risk of pullback increases above 70.`});
+  else if(rsiVal<45) cons.push({icon:'📉', text:`RSI at ${rsiVal.toFixed(1)} — momentum is weak/bearish. Not a good long entry.`});
+  else pros.push({icon:'😐', text:`RSI at ${rsiVal.toFixed(1)} — neutral zone. No strong momentum signal either way.`});
+
+  // Squeeze
+  if(sqzExpanding) pros.push({icon:'💥', text:'Bollinger Bands are expanding — squeeze is releasing. Volatility is increasing, breakout potential present.'});
+  else             cons.push({icon:'😴', text:'Bollinger Bands are still contracting or flat. No squeeze expansion yet — energy not released.'});
+
+  // Volatility
+  if(volLabel==='Moderate') pros.push({icon:'🎯', text:`ATR volatility is Moderate (${atrPct.toFixed(2)}% of price) — ideal for swing entries. Stops not too wide.`});
+  else if(volLabel==='Low')  cons.push({icon:'💤', text:`ATR volatility is Low (${atrPct.toFixed(2)}%). Low volatility can mean no follow-through on breakouts.`});
+  else                       cons.push({icon:'🌪️', text:`ATR volatility is High (${atrPct.toFixed(2)}%). Wide stops required. Size down or wait for contraction.`});
+
+  // Trend strength
+  if(Math.abs(trendHot)>3 && trendHot>0)
+    pros.push({icon:'🔥', text:`Price is ${trendHot.toFixed(2)}% above EMA50 — strong bullish trend momentum.`});
+  else if(Math.abs(trendHot)>3 && trendHot<0)
+    cons.push({icon:'❄️', text:`Price is ${Math.abs(trendHot).toFixed(2)}% below EMA50 — strong bearish trend. Against the trend.`});
+
+  // Swing stars
+  if(swingStars>=4) pros.push({icon:'⭐', text:`Swing rank ${swingStars}/5 stars (score ${swingScore}/9) — this is a high-quality swing setup.`});
+  else if(swingStars<=2) cons.push({icon:'👎', text:`Swing rank only ${swingStars}/5 stars (score ${swingScore}/9) — setup quality is weak.`});
+
+  // Exits (choppiness)
+  if(exits>=3) cons.push({icon:'🔁', text:`UT Bot has flipped ${exits} times recently — price is choppy. High signal noise, consider sitting out.`});
+
+  // ── Verdict ──
+  const proCount = pros.length;
+  const conCount = cons.length;
+  const confPct  = Math.round((swingScore/9)*100);
+  let verdictCls, verdictLabel, verdictSub;
+  if(swingStars>=4 && signal==='bull' && aboveVwap){
+    verdictCls='take'; verdictLabel='✅ TAKE THE TRADE'; verdictSub='Strong confluence — setup aligns across key conditions';
+  } else if(swingStars<=2 || signal==='bear' || !aboveVwap){
+    verdictCls='skip'; verdictLabel='❌ SKIP / WAIT'; verdictSub='Too many conditions failing — risk is not justified';
+  } else {
+    verdictCls='neutral'; verdictLabel='⚠️ PARTIAL — USE CAUTION'; verdictSub='Some conditions align, but wait for more confirmation';
+  }
+
+  // ── Trade levels ──
+  const stopPct  = atrPct*1.5;
+  const entry    = price;
+  const stopLoss = +(price*(1-stopPct/100)).toFixed(2);
+  const t1       = +(price*(1+stopPct/100*2)).toFixed(2);
+  const t2       = +(price*(1+stopPct/100*4)).toFixed(2);
+  const rr       = ((t1-entry)/(entry-stopLoss)).toFixed(1);
+
+  // ── MTF dots (current TF data only — visual summary) ──
+  const mtfChecks = [
+    signal==='bull', aboveVwap, lastE5>lastE20, lastE20>lastE50, rsiVal>50, sqzExpanding, parseFloat(sqzPct)<50, trendHot>0
+  ];
+  const dotsHtml = mtfChecks.map(p=>`<div class="ta-dot ${p?'pass':'fail'}"></div>`).join('');
+
+  const prosHtml = pros.map(p=>`<div class="ta-reason-item"><span class="ri">${p.icon}</span><span>${p.text}</span></div>`).join('');
+  const consHtml = cons.map(c=>`<div class="ta-reason-item"><span class="ri">${c.icon}</span><span>${c.text}</span></div>`).join('');
+
+  const barColor = confPct>=70?'#00c896':confPct>=50?'#ffd600':'#ef5350';
+
+  document.getElementById('taBody').innerHTML = `
+    <div class="ta-verdict ${verdictCls}">
+      <div>
+        <div class="ta-verdict-label">${verdictLabel}</div>
+        <div class="ta-verdict-sub">${verdictSub}</div>
+      </div>
+      <div class="ta-conf-bar-wrap">
+        <div class="ta-conf-bar-bg"><div class="ta-conf-bar-fill" style="width:${confPct}%;background:${barColor}"></div></div>
+        <span class="ta-conf-num">${confPct}%</span>
+      </div>
+    </div>
+
+    <div class="ta-reasons">
+      <div>
+        <div class="ta-col-title pro">✅ Reasons TO Take (${proCount})</div>
+        ${prosHtml||'<div class="ta-reason-item" style="color:var(--text-dim)">No bullish reasons found.</div>'}
+      </div>
+      <div>
+        <div class="ta-col-title con">❌ Reasons NOT To Take (${conCount})</div>
+        ${consHtml||'<div class="ta-reason-item" style="color:var(--text-dim)">No concerns found — clean setup.</div>'}
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:10px;color:var(--text-dim);font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📐 Key Trade Levels (${currentTF} based)</div>
+      <div class="ta-levels">
+        <div class="ta-level-box">
+          <div class="ta-level-label">Entry</div>
+          <div class="ta-level-val entry">$${entry.toFixed(2)}</div>
+          <div class="ta-level-note">Current price</div>
+        </div>
+        <div class="ta-level-box">
+          <div class="ta-level-label">Stop Loss</div>
+          <div class="ta-level-val stop">$${stopLoss}</div>
+          <div class="ta-level-note">1.5× ATR below</div>
+        </div>
+        <div class="ta-level-box">
+          <div class="ta-level-label">Target T1</div>
+          <div class="ta-level-val t1">$${t1}</div>
+          <div class="ta-level-note">2R (${rr}:1 R:R)</div>
+        </div>
+        <div class="ta-level-box">
+          <div class="ta-level-label">Target T2</div>
+          <div class="ta-level-val t2">$${t2}</div>
+          <div class="ta-level-note">4R trail</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:10px;color:var(--text-dim);font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🔍 Signal Summary (${currentTF})</div>
+      <div class="ta-mtf-row">
+        <div class="ta-tf-pill">
+          <div class="ta-tf-pill-label">Rating</div>
+          <div class="ta-tf-pill-rating ${ratingN>=4?'bull':ratingN<=2?'bear':'neutral'}">${rating}</div>
+          <div class="ta-tf-dots">${dotsHtml}</div>
+        </div>
+        <div class="ta-tf-pill">
+          <div class="ta-tf-pill-label">Swing Rank</div>
+          <div class="ta-tf-pill-rating ${swingStars>=4?'bull':swingStars<=2?'bear':'neutral'}">${'★'.repeat(swingStars)}${'☆'.repeat(5-swingStars)} ${swingScore}/9</div>
+          <div class="ta-level-note" style="margin-top:4px">${swingStars>=4?'Prime setup':swingStars>=3?'Good setup':'Weak setup'}</div>
+        </div>
+        <div class="ta-tf-pill">
+          <div class="ta-tf-pill-label">VWAP Position</div>
+          <div class="ta-tf-pill-rating ${aboveVwap?'bull':'bear'}">${vwapLabel}</div>
+          <div class="ta-level-note" style="margin-top:4px">${(vwapDev>=0?'+':'')+vwapDev.toFixed(2)}% from VWAP</div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('taFooterNote').textContent =
+    `${ticker} • ${currentTF} • Swing ${swingStars}★ • ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
+  document.getElementById('taTgBtn').disabled = !tgToken;
+
+  document.getElementById('taOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeTAModal(e){
+  if(e && e.target!==document.getElementById('taOverlay')) return;
+  document.getElementById('taOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function sendTAAlert(){
+  if(!currentTARow||!tgToken) return;
+  const r=currentTARow;
+  const stopPct=r.atrPct*1.5;
+  const stop=+(r.price*(1-stopPct/100)).toFixed(2);
+  const t1=+(r.price*(1+stopPct/100*2)).toFixed(2);
+  const t2=+(r.price*(1+stopPct/100*4)).toFixed(2);
+  const verdict = r.swingStars>=4&&r.signal==='bull'&&r.aboveVwap?'✅ TAKE':'❌ SKIP';
+  const msg=`📊 <b>TRADE ANALYSIS — ${r.ticker}</b>
+`+
+    `Verdict: <b>${verdict}</b> | Swing: ${'★'.repeat(r.swingStars)} (${r.swingScore}/9)
+
+`+
+    `💰 Price: <b>$${r.price.toFixed(2)}</b> | VWAP: <b>${r.vwapLabel} (${r.vwapDev>=0?'+':''}${r.vwapDev.toFixed(2)}%)</b>
+`+
+    `📈 Entry: <b>$${r.price.toFixed(2)}</b>
+`+
+    `🛑 Stop: <b>$${stop}</b> | 🎯 T1: <b>$${t1}</b> | T2: <b>$${t2}</b>
+`+
+    `🤖 UT Bot: <b>${r.signal==='bull'?'BUY':r.signal==='bear'?'SELL':'No signal'}</b> | RSI: <b>${r.rsiVal.toFixed(1)}</b>
+`+
+    `⏰ ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} EST`;
+  await sendTelegram(msg);
+}
+
+
+// ════════════════════════════════════════════
+// STOCK WATCHDOG ENGINE
+// ════════════════════════════════════════════
+let wdTickers    = [];          // {ticker, prevQualified: bool}
+let wdRunning    = false;
+let wdTimer      = null;
+let wdCountTimer = null;
+let wdAlerts     = [];          // feed history
+let wdAlertCount = 0;
+
+function wdAddTicker(){
+  const raw = document.getElementById('wdInput').value.toUpperCase().trim();
+  if(!raw) return;
+  raw.split(/[\s,]+/).filter(t => t && !wdTickers.find(x=>x.ticker===t))
+     .forEach(t => wdTickers.push({ticker:t, prevQualified:false, lastScore:0, lastStatus:'idle'}));
+  document.getElementById('wdInput').value = '';
+  renderWdSidebar();
+}
+document.getElementById('wdInput').addEventListener('keydown', e=>{ if(e.key==='Enter') wdAddTicker(); });
+
+function wdRemoveTicker(ticker){
+  wdTickers = wdTickers.filter(x => x.ticker !== ticker);
+  renderWdSidebar();
+}
+
+function renderWdSidebar(){
+  const el = document.getElementById('wdTickerList');
+  if(!wdTickers.length){
+    el.innerHTML = '<div style="padding:12px 14px;font-size:11px;color:var(--text-dim)">No tickers added yet.</div>';
+    document.getElementById('badge-watchdog').textContent = '—';
+    return;
+  }
+  el.innerHTML = wdTickers.map(t => {
+    const dotCls = t.lastStatus==='triggered'?'triggered':t.lastStatus==='weak'?'weak':wdRunning?'watching':'idle';
+    const statusText = t.lastStatus==='triggered'?`✅ ${t.lastScore}/8`:
+                       t.lastStatus==='weak'?`${t.lastScore}/8`:
+                       wdRunning?'Watching…':'Idle';
+    return `<div class="wd-ticker-item">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div class="wd-status-dot ${dotCls}"></div>
+        <span class="wd-ticker-name">${t.ticker}</span>
+      </div>
+      <div class="wd-ticker-status">
+        <span class="wd-status-label">${statusText}</span>
+        <button class="wd-remove" onclick="wdRemoveTicker('${t.ticker}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('badge-watchdog').textContent = wdTickers.length;
+}
+
+function toggleWatchdog(){
+  if(wdRunning){
+    // STOP
+    wdRunning = false;
+    if(wdTimer) clearInterval(wdTimer);
+    if(wdCountTimer) clearInterval(wdCountTimer);
+    wdTimer = null; wdCountTimer = null;
+    document.getElementById('wdStartBtn').textContent = '▶ Start Watchdog';
+    document.getElementById('wdStartBtn').classList.remove('running');
+    document.getElementById('wdCountdown').innerHTML = 'Status: <span>Stopped</span>';
+    wdTickers.forEach(t => t.lastStatus = 'idle');
+    renderWdSidebar();
+  } else {
+    // START
+    if(!wdTickers.length){ alert('Add at least one ticker to watch.'); return; }
+    wdRunning = true;
+    document.getElementById('wdStartBtn').textContent = '⏹ Stop Watchdog';
+    document.getElementById('wdStartBtn').classList.add('running');
+    // Clear empty state
+    const feed = document.getElementById('wdFeed');
+    if(feed.querySelector('.wd-empty')) feed.innerHTML = '';
+    // Run immediately then on interval
+    runWatchdogScan();
+    const mins = parseInt(document.getElementById('wdInterval').value);
+    wdTimer = setInterval(runWatchdogScan, mins * 60000);
+    startWdCountdown(mins * 60);
+  }
+}
+
+function startWdCountdown(secs){
+  if(wdCountTimer) clearInterval(wdCountTimer);
+  let remaining = secs;
+  const update = () => {
+    const m = Math.floor(remaining/60), s = remaining%60;
+    document.getElementById('wdCountdown').innerHTML =
+      `Watchdog running — next scan in <span>${m}:${s.toString().padStart(2,'0')}</span>`;
+    remaining--;
+    if(remaining < 0){
+      clearInterval(wdCountTimer);
+      const mins2 = parseInt(document.getElementById('wdInterval').value);
+      startWdCountdown(mins2*60);
+    }
+  };
+  update();
+  wdCountTimer = setInterval(update, 1000);
+}
+
+async function runWatchdogScan(){
+  if(!wdRunning) return;
+  const scoreThresh  = parseInt(document.getElementById('wdScoreThresh').value);
+  const signalReq    = document.getElementById('wdSignalReq').value;
+  const vwapReq      = document.getElementById('wdVwapReq').value;
+  const maxEx        = parseInt(document.getElementById('wdMaxExits').value);
+  const tf           = document.getElementById('wdTF').value;
+
+  // Scan all watched tickers
+  await Promise.allSettled(wdTickers.map(async wdItem => {
+    try {
+      const [cd, vd] = await Promise.all([fetchCandles(wdItem.ticker, tf), fetchVWAP(wdItem.ticker)]);
+      if(cd.valid.length < 20) return;
+      const data = analyzeTF(cd.valid, cd.regularMarketPrice, cd.prevClose, vd);
+
+      // Check qualification conditions
+      const scoreOk  = data.swingScore >= scoreThresh;
+      const signalOk = signalReq==='any' || data.signal==='bull';
+      const vwapOk   = vwapReq==='no'   || data.aboveVwap;
+      const exitsOk  = data.exits <= maxEx;
+      const qualified = scoreOk && signalOk && vwapOk && exitsOk;
+
+      // STATE CHANGE detection — only alert on transition weak → strong
+      const wasQualified = wdItem.prevQualified;
+      wdItem.prevQualified = qualified;
+      wdItem.lastScore     = data.swingScore;
+      wdItem.lastStatus    = qualified ? 'triggered' : 'weak';
+
+      if(qualified && !wasQualified){
+        // NEW ALERT — state changed to qualifying
+        const alertObj = {
+          ticker: wdItem.ticker,
+          score:  data.swingScore,
+          price:  data.price,
+          chg:    data.chg,
+          signal: data.signal,
+          vwapLabel: data.vwapLabel,
+          vwapDev:   data.vwapDev,
+          rating: data.rating,
+          rsiVal: data.rsiVal,
+          sqzExpanding: data.sqzExpanding,
+          aboveVwap: data.aboveVwap,
+          atrPct: data.atrPct,
+          tf,
+          time: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+        };
+        wdAlerts.unshift(alertObj);
+        wdAlertCount++;
+        renderWdFeed();
+        // Send Telegram
+        await sendWdTelegram(alertObj);
+      }
+    } catch(e){ /* skip failed */ }
+  }));
+
+  renderWdSidebar();
+  document.getElementById('wdAlertCount').textContent =
+    wdAlertCount ? `${wdAlertCount} alert${wdAlertCount>1?'s':''} fired` : '';
+}
+
+function renderWdFeed(){
+  const feed = document.getElementById('wdFeed');
+  if(!wdAlerts.length){
+    feed.innerHTML = '<div class="wd-empty"><h3>No alerts yet</h3><p>Watchdog is running — waiting for setups to form.</p></div>';
+    return;
+  }
+  feed.innerHTML = wdAlerts.map((a,i) => {
+    const cc  = a.chg>=0?'up':'dn';
+    const stopPct = a.atrPct*1.5;
+    const stop  = (a.price*(1-stopPct/100)).toFixed(2);
+    const t1    = (a.price*(1+stopPct/100*2)).toFixed(2);
+    const conditions = [
+      {label:'UT Bot BUY', pass: a.signal==='bull'},
+      {label:'Above VWAP', pass: a.aboveVwap},
+      {label:'Score '+a.score+'/8', pass: a.score>=6},
+      {label:'Squeeze ↑', pass: a.sqzExpanding},
+      {label:'RSI '+a.rsiVal.toFixed(0), pass: a.rsiVal>=50&&a.rsiVal<=70},
+    ];
+    return `<div class="wd-alert-card new">
+      <div class="wd-alert-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="wd-alert-ticker">${a.ticker}</span>
+          <span class="cell-price" style="font-size:12px">$${a.price.toFixed(2)}</span>
+          <span class="cell-chg ${cc}" style="font-size:11px">${a.chg>=0?'+':''}${a.chg.toFixed(2)}%</span>
+          <span class="rating-tag ${a.rating.includes('Strong')?'strong-bull':'bull'}" style="font-size:10px">${a.rating}</span>
+        </div>
+        <span class="wd-alert-time">${a.tf} • ${a.time}</span>
+      </div>
+      <div class="wd-alert-body">
+        <div class="wd-alert-score">Confluence score: <span>${a.score}/8</span> | VWAP: <span>${a.vwapLabel} (${a.vwapDev>=0?'+':''}${a.vwapDev.toFixed(2)}%)</span></div>
+        <div class="wd-conditions">
+          ${conditions.map(c=>`<span class="wd-cond-tag ${c.pass?'pass':'fail'}">${c.pass?'✅':'⬜'} ${c.label}</span>`).join('')}
+        </div>
+        <div class="wd-alert-levels">
+          <span>Entry: <b>$${a.price.toFixed(2)}</b></span>
+          <span>Stop: <b>$${stop}</b></span>
+          <span>T1: <b>$${t1}</b></span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function sendWdTelegram(a){
+  if(!tgToken) return;
+  const stopPct = a.atrPct*1.5;
+  const stop = (a.price*(1-stopPct/100)).toFixed(2);
+  const t1   = (a.price*(1+stopPct/100*2)).toFixed(2);
+  const t2   = (a.price*(1+stopPct/100*4)).toFixed(2);
+  const msg =
+    `🔔 <b>WATCHDOG ALERT — ${a.ticker}</b>\n`+
+    `Setup just became STRONG on ${a.tf}!\n\n`+
+    `💰 Price: <b>$${a.price.toFixed(2)}</b> (${a.chg>=0?'+':''}${a.chg.toFixed(2)}%)\n`+
+    `📊 Rating: <b>${a.rating}</b> | Score: <b>${a.score}/8</b>\n`+
+    `🌊 VWAP: <b>${a.vwapLabel}</b> (${a.vwapDev>=0?'+':''}${a.vwapDev.toFixed(2)}%)\n`+
+    `🤖 UT Bot: <b>${a.signal==='bull'?'BUY ✅':'—'}</b> | RSI: <b>${a.rsiVal.toFixed(1)}</b>\n\n`+
+    `📐 Entry: <b>$${a.price.toFixed(2)}</b> | Stop: <b>$${stop}</b> | T1: <b>$${t1}</b> | T2: <b>$${t2}</b>\n`+
+    `⏰ ${a.time} EST`;
+  await sendTelegram(msg);
+}
+
+function clearWdFeed(){
+  wdAlerts = []; wdAlertCount = 0;
+  document.getElementById('wdAlertCount').textContent = '';
+  renderWdFeed();
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+renderChips();
+setTF('15m');
+setAutoAlert(); // start auto-alert loop with default interval
+</script>
+</body>
+</html>
