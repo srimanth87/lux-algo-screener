@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxAlgo Screener — Trading Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #080a0e;
+  --bg2:     #0d1017;
+  --bg3:     #111520;
+  --border:  #1e2535;
+  --border2: #252d40;
+  --text:    #c8d0e0;
+  --dim:     #4a5570;
+  --accent:  #3b82f6;
+  --accent2: #60a5fa;
+  --green:   #10b981;
+  --green2:  #34d399;
+  --red:     #ef4444;
+  --gold:    #f59e0b;
+  --purple:  #8b5cf6;
+  --cyan:    #06b6d4;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRID BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── GLOW ORBS ── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+}
+.orb-1 { width: 600px; height: 600px; background: rgba(59,130,246,.06); top: -200px; left: -100px; }
+.orb-2 { width: 400px; height: 400px; background: rgba(16,185,129,.05); bottom: 0; right: -100px; }
+.orb-3 { width: 300px; height: 300px; background: rgba(139,92,246,.04); top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+/* ── WRAPPER ── */
+.wrap { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+
+/* ── NAV ── */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,10,14,.8);
+  backdrop-filter: blur(20px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nav-logo-mark {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800; color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+}
+.nav-logo-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -.3px;
+}
+.nav-logo-text span { color: var(--accent2); }
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dim);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all .2s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.nav-link:hover { color: var(--text); background: var(--bg3); }
+.nav-cta {
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 8px 18px;
+  border-radius: 7px;
+  transition: all .2s;
+  font-family: 'JetBrains Mono', monospace;
+  display: flex; align-items: center; gap: 6px;
+}
+.nav-cta:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(59,130,246,.3); }
+
+/* ── HERO ── */
+.hero {
+  padding: 90px 32px 70px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent2);
+  background: rgba(59,130,246,.1);
+  border: 1px solid rgba(59,130,246,.2);
+  padding: 5px 12px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  animation: fadeUp .6s ease both;
+}
+.hero-eyebrow::before { content: '◉'; font-size: 8px; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.hero-title {
+  font-size: clamp(42px, 6vw, 72px);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.05;
+  letter-spacing: -2px;
+  margin-bottom: 20px;
+  animation: fadeUp .6s .1s ease both;
+}
+.hero-title .accent { color: var(--accent2); }
+.hero-title .green  { color: var(--green2); }
+
+.hero-sub {
+  font-size: 16px;
+  color: var(--dim);
+  max-width: 560px;
+  line-height: 1.7;
+  margin-bottom: 36px;
+  font-weight: 400;
+  animation: fadeUp .6s .2s ease both;
+}
+
+.hero-btns {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  animation: fadeUp .6s .3s ease both;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  padding: 13px 28px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+  transition: all .2s;
+  box-shadow: 0 0 30px rgba(59,130,246,.2);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59,130,246,.35); }
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  text-decoration: none;
+  padding: 13px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--border2);
+  transition: all .2s;
+}
+.btn-secondary:hover { background: var(--bg3); border-color: var(--dim); }
+
+/* ── LIVE TICKER STRIP ── */
+.ticker-strip {
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  padding: 10px 0;
+  position: relative;
+  animation: fadeUp .6s .4s ease both;
+}
+.ticker-strip::before,
+.ticker-strip::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 80px;
+  z-index: 2;
+}
+.ticker-strip::before { left: 0; background: linear-gradient(90deg, var(--bg2), transparent); }
+.ticker-strip::after  { right: 0; background: linear-gradient(-90deg, var(--bg2), transparent); }
+.ticker-track {
+  display: flex;
+  gap: 0;
+  animation: scroll 30s linear infinite;
+  width: max-content;
+}
+@keyframes scroll { to { transform: translateX(-50%); } }
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  border-right: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ticker-sym { font-weight: 600; color: #fff; }
+.ticker-price { color: var(--text); }
+.ticker-chg { font-weight: 600; }
+.ticker-chg.up { color: var(--green2); }
+.ticker-chg.dn { color: var(--red); }
+.ticker-sig { font-size: 9px; padding: 1px 6px; border-radius: 3px; font-weight: 700; }
+.ticker-sig.buy { background: rgba(16,185,129,.2); color: var(--green2); }
+.ticker-sig.sell { background: rgba(239,68,68,.2); color: var(--red); }
+
+/* ── STATS ROW ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 60px auto;
+  max-width: 1200px;
+  padding: 0 32px;
+  animation: fadeUp .6s .5s ease both;
+}
+.stat-box {
+  background: var(--bg2);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background .2s;
+}
+.stat-box:hover { background: var(--bg3); }
+.stat-label { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--dim); text-transform: uppercase; letter-spacing: .1em; }
+.stat-val { font-size: 32px; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -1px; }
+.stat-val .unit { font-size: 16px; color: var(--dim); font-weight: 600; }
+.stat-desc { font-size: 11px; color: var(--dim); }
+
+/* ── SECTION TITLE ── */
+.section { max-width: 1200px; margin: 0 auto; padding: 0 32px 80px; }
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent2);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 12px;
+}
+.section-sub {
+  font-size: 15px;
+  color: var(--dim);
+  max-width: 520px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+
+/* ── TOOLS GRID ── */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+.tool-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  transition: all .25s;
+  position: relative;
+}
+.tool-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity .25s;
+}
+.tool-card.blue::before  { background: linear-gradient(135deg, rgba(59,130,246,.06), transparent); }
+.tool-card.green::before { background: linear-gradient(135deg, rgba(16,185,129,.06), transparent); }
+.tool-card.gold::before  { background: linear-gradient(135deg, rgba(245,158,11,.06), transparent); }
+.tool-card.purple::before{ background: linear-gradient(135deg, rgba(139,92,246,.06), transparent); }
+.tool-card:hover { transform: translateY(-3px); border-color: var(--border2); }
+.tool-card:hover::before { opacity: 1; }
+.tool-card:hover .tool-arrow { transform: translate(3px,-3px); opacity: 1; }
+
+.tool-card-top {
+  padding: 24px 24px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tool-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.tool-icon.blue   { background: rgba(59,130,246,.15); }
+.tool-icon.green  { background: rgba(16,185,129,.15); }
+.tool-icon.gold   { background: rgba(245,158,11,.15);  }
+.tool-icon.purple { background: rgba(139,92,246,.15); }
+.tool-arrow {
+  color: var(--dim);
+  font-size: 16px;
+  opacity: 0;
+  transition: all .2s;
+  margin-top: 4px;
+}
+.tool-card-body { padding: 0 24px 24px; flex: 1; }
+.tool-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+  letter-spacing: -.3px;
+}
+.tool-desc {
+  font-size: 13px;
+  color: var(--dim);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.tool-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  border: 1px solid;
+}
+.tag.blue   { color: var(--accent2);  background: rgba(59,130,246,.08); border-color: rgba(59,130,246,.2); }
+.tag.green  { color: var(--green2);   background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.2); }
+.tag.gold   { color: #fcd34d;         background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.2); }
+.tag.purple { color: #a78bfa;         background: rgba(139,92,246,.08); border-color: rgba(139,92,246,.2); }
+.tag.cyan   { color: #67e8f9;         background: rgba(6,182,212,.08);  border-color: rgba(6,182,212,.2);  }
+
+.tool-card-footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tool-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--green2);
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green2);
+  animation: pulse 2s infinite;
+}
+.tool-launch {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent2);
+  display: flex; align-items: center; gap: 4px;
+}
+
+/* ── MTF FLOW ── */
+.mtf-flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 60px;
+}
+.mtf-step {
+  padding: 24px 20px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  position: relative;
+  transition: background .2s;
+}
+.mtf-step:last-child { border-right: none; }
+.mtf-step:hover { background: var(--bg3); }
+.mtf-step::after {
+  content: '→';
+  position: absolute;
+  right: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--border2);
+  font-size: 18px;
+  z-index: 2;
+}
+.mtf-step:last-child::after { display: none; }
+.mtf-tf {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+.mtf-tf.d1  { background: rgba(245,158,11,.15); color: #fcd34d; }
+.mtf-tf.h1  { background: rgba(139,92,246,.15); color: #a78bfa; }
+.mtf-tf.m15 { background: rgba(59,130,246,.15);  color: var(--accent2); }
+.mtf-tf.m5  { background: rgba(16,185,129,.15); color: var(--green2); }
+.mtf-step-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.mtf-step-desc  { font-size: 12px; color: var(--dim); line-height: 1.5; }
+.mtf-checks { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.mtf-check  { font-size: 11px; color: var(--green2); display: flex; align-items: center; gap: 5px; font-family: 'JetBrains Mono', monospace; }
+
+/* ── ALERT PREVIEW ── */
+.alert-preview {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.tg-mockup {
+  flex-shrink: 0;
+  width: 280px;
+  background: #17212b;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #243447;
+}
+.tg-header {
+  background: #232e3c;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #243447;
+}
+.tg-avatar {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.tg-name { font-size: 13px; font-weight: 600; color: #fff; }
+.tg-sub  { font-size: 10px; color: #8a9baa; }
+.tg-messages { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.tg-msg {
+  background: #232e3c;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #c8d0e0;
+  line-height: 1.6;
+  border-left: 2px solid var(--accent);
+  animation: fadeUp .5s ease both;
+}
+.tg-msg:nth-child(2) { animation-delay: .2s; border-left-color: var(--green); }
+.tg-msg .tg-ticker { color: #fff; font-weight: 600; font-size: 12px; }
+.tg-msg .tg-grade-a { color: var(--green2); font-weight: 700; }
+.tg-msg .tg-entry { color: var(--green2); }
+.tg-msg .tg-stop  { color: var(--red); }
+.tg-msg .tg-target { color: #fcd34d; }
+.tg-time { font-size: 9px; color: #8a9baa; text-align: right; margin-top: 4px; }
+
+.alert-info { flex: 1; }
+.alert-info h3 { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -.5px; }
+.alert-info p  { font-size: 13px; color: var(--dim); line-height: 1.7; margin-bottom: 20px; }
+.alert-features { display: flex; flex-direction: column; gap: 10px; }
+.af-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13px; color: var(--text);
+}
+.af-icon {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  background: rgba(59,130,246,.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.footer-left { font-size: 12px; color: var(--dim); font-family: 'JetBrains Mono', monospace; }
+.footer-left span { color: var(--accent2); }
+.footer-links { display: flex; gap: 20px; }
+.footer-link { font-size: 12px; color: var(--dim); text-decoration: none; font-family: 'JetBrains Mono', monospace; transition: color .15s; }
+.footer-link:hover { color: var(--text); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity .6s ease, transform .6s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .stats-row { grid-template-columns: repeat(2,1fr); }
+  .mtf-flow  { grid-template-columns: repeat(2,1fr); }
+  .alert-preview { flex-direction: column; }
+  .tg-mockup { width: 100%; }
+  nav { padding: 16px 20px; }
+  .hero { padding: 60px 20px 50px; }
+  .section { padding: 0 20px 60px; }
+  .wrap { padding: 0 20px; }
+  .nav-links { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-mark">L</div>
+    <div class="nav-logo-text"><span>LuxAlgo</span> Screener</div>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="#tools">Tools</a>
+    <a class="nav-link" href="#methodology">Methodology</a>
+    <a class="nav-link" href="#alerts">Alerts</a>
+    <a class="nav-link" href="https://github.com/srimanth87/lux-algo-screener" target="_blank">GitHub</a>
+  </div>
+  <a class="nav-cta" href="lux-screener-15m.html">
+    ▶ Launch Screener
+  </a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Live Intraday Scanner</div>
+  <h1 class="hero-title">
+    Trade with<br>
+    <span class="accent">Multi-Timeframe</span><br>
+    <span class="green">Confluence</span>
+  </h1>
+  <p class="hero-sub">
+    Real-time stock screener powered by UT Bot, VWAP, EMA stacks, and Squeeze logic.
+    Scans NDX 100 across 1D → 1H → 15m → 5m and alerts you the moment setups align.
+  </p>
+  <div class="hero-btns">
+    <a class="btn-primary" href="lux-screener-15m.html">▶ &nbsp;Open Screener</a>
+    <a class="btn-secondary" href="#tools">See all tools →</a>
+  </div>
+</div>
+
+<!-- TICKER STRIP -->
+<div class="ticker-strip">
+  <div class="ticker-track" id="tickerTrack">
+    <!-- populated by JS -->
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row reveal">
+  <div class="stat-box">
+    <div class="stat-label">Tickers Scanned</div>
+    <div class="stat-val">100<span class="unit">+</span></div>
+    <div class="stat-desc">Full NDX 100 + custom watchlist</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Timeframes</div>
+    <div class="stat-val">4<span class="unit">TF</span></div>
+    <div class="stat-desc">1D Bias → 1H → 15m → 5m</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Confluence Score</div>
+    <div class="stat-val">8<span class="unit">pts</span></div>
+    <div class="stat-desc">8-condition MTF checklist</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Alert Delivery</div>
+    <div class="stat-val">~5<span class="unit">sec</span></div>
+    <div class="stat-desc">Telegram alerts on state change</div>
+  </div>
+</div>
+
+<!-- TOOLS GRID -->
+<div class="section" id="tools">
+  <div class="section-label">Dashboard Tools</div>
+  <h2 class="section-title">Everything in one place</h2>
+  <p class="section-sub">Four purpose-built tabs — each focused on a specific phase of your trading workflow.</p>
+
+  <div class="tools-grid reveal">
+
+    <a class="tool-card blue" href="lux-screener-15m.html">
+      <div class="tool-card-top">
+        <div class="tool-icon blue">👁</div>
+        <div class="tool-arrow">↗</div>
+      </div>
+      <div class="tool-card-body">
+        <div class="tool-name">Watchlist Scanner</div>
+        <div class="tool-desc">Your custom tickers scanned in real-time. Swing rank, VWAP position, UT Bot signal, and squeeze status at a glance. Click any row for a full trade analysis breakdown.</div>
+        <div class="tool-tags">
+          <span class="tag blue">UT Bot</span>
+          <span class="tag blue">VWAP</span>
+          <span class="tag blue">EMA Stack</span>
+          <span class="tag blue">Swing Rank ★</span>
+        </div>
+      </div>
+      <div class="tool-card-footer">
+        <div class="tool-status"><div class="status-dot"></div> Live</div>
+        <div class="tool-launch">Open →</div>
+      </div>
+    </a>
+
+    <a class="tool-card green" href="lux-screener-15m.html#ndx100">
+      <div class="tool-card-top">
+        <div class="tool-icon green">📊</div>
+        <div class="tool-arrow">↗</div>
+      </div>
+      <div class="tool-card-body">
+        <div class="tool-name">NDX 100 Scanner</div>
+        <div class="tool-desc">Scan all 100 Nasdaq stocks in batches. Ranked by swing potential. Filter by ⭐⭐⭐⭐⭐ setups, Bullish rating, or active BUY signals. Best setups float to the top.</div>
+        <div class="tool-tags">
+          <span class="tag green">100 Stocks</span>
+          <span class="tag green">Batch Scan</span>
+          <span class="tag green">Filter & Sort</span>
+          <span class="tag green">Progress Bar</span>
+        </div>
+      </div>
+      <div class="tool-card-footer">
+        <div class="tool-status"><div class="status-dot"></div> On Demand</div>
+        <div class="tool-launch">Scan →</div>
+      </div>
+    </a>
+
+    <a class="tool-card gold" href="lux-screener-15m.html#alerts">
+      <div class="tool-card-top">
+        <div class="tool-icon gold">🎯</div>
+        <div class="tool-arrow">↗</div>
+      </div>
+      <div class="tool-card-body">
+        <div class="tool-name">Confluence Alerts</div>
+        <div class="tool-desc">Runs the full 1H + 15m + 5m MTF checklist across all tickers. Only shows Grade A/B setups. Auto-scans every 5–30 minutes. Sends Telegram on new setups with entry, stop, and targets.</div>
+        <div class="tool-tags">
+          <span class="tag gold">MTF Check</span>
+          <span class="tag gold">Grade A/B</span>
+          <span class="tag gold">Auto-Scan</span>
+          <span class="tag gold">Telegram</span>
+        </div>
+      </div>
+      <div class="tool-card-footer">
+        <div class="tool-status"><div class="status-dot"></div> Auto-Refresh</div>
+        <div class="tool-launch">Alerts →</div>
+      </div>
+    </a>
+
+    <a class="tool-card purple" href="lux-screener-15m.html#watchdog">
+      <div class="tool-card-top">
+        <div class="tool-icon purple">🔔</div>
+        <div class="tool-arrow">↗</div>
+      </div>
+      <div class="tool-card-body">
+        <div class="tool-name">Stock Watchdog</div>
+        <div class="tool-desc">Add specific tickers. Set your threshold. Watchdog monitors continuously and fires a Telegram alert the moment a stock transitions from weak → strong setup. State-change alerts only — no spam.</div>
+        <div class="tool-tags">
+          <span class="tag purple">State Change</span>
+          <span class="tag purple">Per-Ticker</span>
+          <span class="tag purple">No Spam</span>
+          <span class="tag purple">Always On</span>
+        </div>
+      </div>
+      <div class="tool-card-footer">
+        <div class="tool-status"><div class="status-dot"></div> Continuous</div>
+        <div class="tool-launch">Watch →</div>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+<!-- MTF METHODOLOGY -->
+<div class="section" id="methodology">
+  <div class="section-label">Trading Methodology</div>
+  <h2 class="section-title">Top-down confluence</h2>
+  <p class="section-sub">Every signal flows from higher to lower timeframes. No entry without confirmation at all levels.</p>
+
+  <div class="mtf-flow reveal">
+    <div class="mtf-step">
+      <div class="mtf-tf d1">1D Bias</div>
+      <div class="mtf-step-title">Daily Trend</div>
+      <div class="mtf-step-desc">Is the stock in a bullish trend overall?</div>
+      <div class="mtf-checks">
+        <div class="mtf-check">✓ Price > EMA50</div>
+        <div class="mtf-check">✓ Above daily VWAP</div>
+        <div class="mtf-check">✓ UT Bot = BUY</div>
+      </div>
+    </div>
+    <div class="mtf-step">
+      <div class="mtf-tf h1">1H</div>
+      <div class="mtf-step-title">Session Bias</div>
+      <div class="mtf-step-desc">Is today's session bullish?</div>
+      <div class="mtf-checks">
+        <div class="mtf-check">✓ EMA stack aligned</div>
+        <div class="mtf-check">✓ Above VWAP</div>
+        <div class="mtf-check">✓ RSI > 50</div>
+      </div>
+    </div>
+    <div class="mtf-step">
+      <div class="mtf-tf m15">15m</div>
+      <div class="mtf-step-title">Setup</div>
+      <div class="mtf-step-desc">Pullback to EMA20 forming?</div>
+      <div class="mtf-checks">
+        <div class="mtf-check">✓ Near EMA20</div>
+        <div class="mtf-check">✓ Squeeze expanding</div>
+        <div class="mtf-check">✓ Above VWAP</div>
+      </div>
+    </div>
+    <div class="mtf-step">
+      <div class="mtf-tf m5">5m</div>
+      <div class="mtf-step-title">Entry</div>
+      <div class="mtf-step-desc">Entry trigger confirmed?</div>
+      <div class="mtf-checks">
+        <div class="mtf-check">✓ UT Bot BUY fires</div>
+        <div class="mtf-check">✓ Above VWAP</div>
+        <div class="mtf-check">✓ Volume spike</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALERTS SECTION -->
+<div class="section" id="alerts">
+  <div class="section-label">Telegram Alerts</div>
+  <h2 class="section-title">Know the moment it sets up</h2>
+  <p class="section-sub">State-change alerts — only fires when a ticker newly becomes a strong setup. No repeating, no noise.</p>
+
+  <div class="alert-preview reveal">
+    <div class="tg-mockup">
+      <div class="tg-header">
+        <div class="tg-avatar">🤖</div>
+        <div>
+          <div class="tg-name">LuxAlgo Screener</div>
+          <div class="tg-sub">@Breakouthq_bot</div>
+        </div>
+      </div>
+      <div class="tg-messages">
+        <div class="tg-msg">
+          🎯 <span class="tg-ticker">CONFLUENCE — NVDA</span><br>
+          Grade: <span class="tg-grade-a">A</span> | Score: <span class="tg-grade-a">7/8</span><br><br>
+          💰 Price: <span class="tg-entry">$196.51</span><br>
+          📈 Entry: <span class="tg-entry">$196.51</span><br>
+          🛑 Stop: <span class="tg-stop">$195.71</span><br>
+          🎯 T1: <span class="tg-target">$198.10</span> | T2: <span class="tg-target">$199.70</span>
+          <div class="tg-time">10:47 AM ✓✓</div>
+        </div>
+        <div class="tg-msg">
+          🔔 <span class="tg-ticker">WATCHDOG — MSFT</span><br>
+          Status changed: Weak → <span class="tg-grade-a">Strong Setup</span><br>
+          Swing: <span class="tg-grade-a">★★★★★</span> (8/9)<br><br>
+          Above VWAP ✅ | UT Bot BUY ✅<br>
+          EMA Stack ✅ | Squeeze ✅
+          <div class="tg-time">10:52 AM ✓✓</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert-info">
+      <h3>Two types of alerts</h3>
+      <p>The Confluence tab sends alerts when a full MTF scan passes your threshold. The Watchdog tab fires only on state transitions — the first moment a ticker crosses into a strong setup.</p>
+      <div class="alert-features">
+        <div class="af-item">
+          <div class="af-icon">🎯</div>
+          <div><strong style="color:#fff">Confluence Alert</strong> — runs every 5/15/30m, scans all tickers against 8 MTF conditions, sends Grade A/B setups with trade levels</div>
+        </div>
+        <div class="af-item">
+          <div class="af-icon">🔔</div>
+          <div><strong style="color:#fff">Watchdog Alert</strong> — watches specific tickers continuously, fires only when status changes from non-qualifying → qualifying (no duplicate spam)</div>
+        </div>
+        <div class="af-item">
+          <div class="af-icon">⏱</div>
+          <div><strong style="color:#fff">1-hour cooldown</strong> — once alerted, same ticker won't fire again for 60 minutes even if auto-scan re-runs</div>
+        </div>
+        <div class="af-item">
+          <div class="af-icon">📐</div>
+          <div><strong style="color:#fff">Trade levels included</strong> — every alert includes Entry, Stop Loss (1.5×ATR), T1 (2R), and T2 (4R) automatically</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    Built by <span>@srimanth87</span> · LuxAlgo Screener · 2026
+  </div>
+  <div class="footer-links">
+    <a class="footer-link" href="lux-screener-15m.html">Screener</a>
+    <a class="footer-link" href="https://github.com/srimanth87/lux-algo-screener" target="_blank">GitHub</a>
+    <a class="footer-link" href="https://t.me/Breakouthq_bot" target="_blank">Telegram Bot</a>
+  </div>
+</footer>
+
+<script>
+// ── TICKER STRIP ──
+const TICKERS = [
+  {sym:'NVDA',  price:'196.51', chg:'+4.18%', dir:'up', sig:'BUY'},
+  {sym:'AAPL',  price:'259.20', chg:'-0.55%', dir:'dn', sig:''},
+  {sym:'MSFT',  price:'393.11', chg:'+6.00%', dir:'up', sig:'BUY'},
+  {sym:'TSLA',  price:'352.38', chg:'+0.42%', dir:'up', sig:''},
+  {sym:'META',  price:'662.49', chg:'+5.18%', dir:'up', sig:'BUY'},
+  {sym:'GOOGL', price:'332.91', chg:'+4.94%', dir:'up', sig:'BUY'},
+  {sym:'AMZN',  price:'218.73', chg:'+2.11%', dir:'up', sig:''},
+  {sym:'NFLX',  price:'103.16', chg:'+0.08%', dir:'up', sig:''},
+  {sym:'ORCL',  price:'155.63', chg:'+0.48%', dir:'up', sig:'BUY'},
+  {sym:'CRWD',  price:'398.21', chg:'-1.24%', dir:'dn', sig:'SELL'},
+  {sym:'PLTR',  price:'87.45',  chg:'+3.67%', dir:'up', sig:'BUY'},
+  {sym:'AMD',   price:'124.88', chg:'+1.92%', dir:'up', sig:''},
+  {sym:'AVGO',  price:'233.14', chg:'+0.74%', dir:'up', sig:''},
+  {sym:'COST',  price:'912.33', chg:'+0.31%', dir:'up', sig:''},
+];
+
+function buildStrip(){
+  const items = [...TICKERS, ...TICKERS].map(t => `
+    <div class="ticker-item">
+      <span class="ticker-sym">${t.sym}</span>
+      <span class="ticker-price">$${t.price}</span>
+      <span class="ticker-chg ${t.dir}">${t.chg}</span>
+      ${t.sig ? `<span class="ticker-sig ${t.sig==='BUY'?'buy':'sell'}">${t.sig}</span>` : ''}
+    </div>`).join('');
+  document.getElementById('tickerTrack').innerHTML = items;
+}
+buildStrip();
+
+// ── REVEAL ON SCROLL ──
+const reveals = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if(e.isIntersecting){
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+reveals.forEach(el => io.observe(el));
+</script>
+</body>
+</html>
