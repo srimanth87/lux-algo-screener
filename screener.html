@@ -520,8 +520,8 @@ tbody tr.loaded{cursor:pointer}
         <div>
           <label>Alert when score ≥</label>
           <div class="wd-range-row">
-            <input type="range" id="wdScoreThresh" min="4" max="8" value="6" oninput="document.getElementById('wdScoreVal').textContent=this.value+'/8'">
-            <span class="wd-range-val" id="wdScoreVal">6/8</span>
+            <input type="range" id="wdScoreThresh" min="4" max="9" value="6" oninput="document.getElementById('wdScoreVal').textContent=this.value+'/9'">
+            <span class="wd-range-val" id="wdScoreVal">6/9</span>
           </div>
         </div>
         <div>
@@ -643,6 +643,7 @@ let autoAlertTimer = null;
 let alertedTickers = JSON.parse(localStorage.getItem('lux_alerted') || '{}');
 function saveAlertedTickers(){ localStorage.setItem('lux_alerted', JSON.stringify(alertedTickers)); }
 let ndxResults=[], ndxSortKey='swingScore', ndxSortDir=-1, ndxFilter='all', ndxRunning=false, ndxScannedCount=0;
+const MTF_TIMEFRAME = 'MTF-1h-15m-5m';
 
 // Telegram
 let tgToken = localStorage.getItem('lux_tg_token') || '';
@@ -1182,7 +1183,7 @@ async function sendAlertCard(ticker,score,grade,price,entry,stop,t1,t2){
     sendTelegram(msg),
     sendKalkiLuxAlert({
       id:buildKalkiSignalId(ticker,score,entry,stop),
-      ticker, score, scoreMax:8, grade, timeframe:currentTF,
+      ticker, score, scoreMax:8, grade, timeframe:MTF_TIMEFRAME,
       price, entry, stop, t1, t2,
       pattern:'Lux confluence alert',
       signal:'bull',
@@ -1648,6 +1649,10 @@ async function sendTAAlert(){
   const t1=+(r.price*(1+stopPct/100*2)).toFixed(2);
   const t2=+(r.price*(1+stopPct/100*4)).toFixed(2);
   const verdict = r.swingStars>=4&&r.signal==='bull'&&r.aboveVwap?'✅ TAKE':'❌ SKIP';
+  if(verdict!=='✅ TAKE'){
+    alert('Kalki send blocked: this setup is SKIP / not a bullish TAKE trade.');
+    return;
+  }
   const msg=`📊 <b>TRADE ANALYSIS — ${r.ticker}</b>
 `+
     `Verdict: <b>${verdict}</b> | Swing: ${'★'.repeat(r.swingStars)} (${r.swingScore}/9)
@@ -1667,8 +1672,8 @@ async function sendTAAlert(){
     sendKalkiLuxAlert({
       id:buildKalkiSignalId(r.ticker,r.swingScore,r.price,stop),
       ticker:r.ticker,
-      score:Math.min(8,Math.max(0,r.swingScore)),
-      scoreMax:8,
+      score:r.swingScore,
+      scoreMax:9,
       grade:r.swingStars>=5?'A+':r.swingStars>=4?'A':'B+',
       timeframe:currentTF,
       price:r.price,
@@ -1689,12 +1694,25 @@ async function sendTAAlert(){
 // ════════════════════════════════════════════
 // STOCK WATCHDOG ENGINE
 // ════════════════════════════════════════════
-let wdTickers    = [];          // {ticker, prevQualified: bool}
+let wdTickers    = loadWdTickers();          // {ticker, prevQualified: bool}
 let wdRunning    = false;
 let wdTimer      = null;
 let wdCountTimer = null;
 let wdAlerts     = [];          // feed history
 let wdAlertCount = 0;
+
+function loadWdTickers(){
+  try{
+    const rows=JSON.parse(localStorage.getItem('lux_wd_tickers')||'[]');
+    return Array.isArray(rows) ? rows.map(x=>({
+      ticker:String(x.ticker||'').toUpperCase().replace(/[^A-Z0-9.-]/g,'').slice(0,10),
+      prevQualified:!!x.prevQualified,
+      lastScore:Number.isFinite(Number(x.lastScore))?Number(x.lastScore):0,
+      lastStatus:x.lastStatus||'idle'
+    })).filter(x=>x.ticker) : [];
+  }catch{return [];}
+}
+function saveWdTickers(){ localStorage.setItem('lux_wd_tickers', JSON.stringify(wdTickers)); }
 
 function wdAddTicker(){
   const raw = document.getElementById('wdInput').value.toUpperCase().trim();
@@ -1702,12 +1720,14 @@ function wdAddTicker(){
   raw.split(/[\s,]+/).filter(t => t && !wdTickers.find(x=>x.ticker===t))
      .forEach(t => wdTickers.push({ticker:t, prevQualified:false, lastScore:0, lastStatus:'idle'}));
   document.getElementById('wdInput').value = '';
+  saveWdTickers();
   renderWdSidebar();
 }
 document.getElementById('wdInput').addEventListener('keydown', e=>{ if(e.key==='Enter') wdAddTicker(); });
 
 function wdRemoveTicker(ticker){
   wdTickers = wdTickers.filter(x => x.ticker !== ticker);
+  saveWdTickers();
   renderWdSidebar();
 }
 
@@ -1720,8 +1740,8 @@ function renderWdSidebar(){
   }
   el.innerHTML = wdTickers.map(t => {
     const dotCls = t.lastStatus==='triggered'?'triggered':t.lastStatus==='weak'?'weak':wdRunning?'watching':'idle';
-    const statusText = t.lastStatus==='triggered'?`✅ ${t.lastScore}/8`:
-                       t.lastStatus==='weak'?`${t.lastScore}/8`:
+    const statusText = t.lastStatus==='triggered'?`✅ ${t.lastScore}/9`:
+                       t.lastStatus==='weak'?`${t.lastScore}/9`:
                        wdRunning?'Watching…':'Idle';
     return `<div class="wd-ticker-item">
       <div style="display:flex;align-items:center;gap:7px">
@@ -1748,6 +1768,7 @@ function toggleWatchdog(){
     document.getElementById('wdStartBtn').classList.remove('running');
     document.getElementById('wdCountdown').innerHTML = 'Status: <span>Stopped</span>';
     wdTickers.forEach(t => t.lastStatus = 'idle');
+    saveWdTickers();
     renderWdSidebar();
   } else {
     // START
@@ -1811,6 +1832,7 @@ async function runWatchdogScan(){
       wdItem.prevQualified = qualified;
       wdItem.lastScore     = data.swingScore;
       wdItem.lastStatus    = qualified ? 'triggered' : 'weak';
+      saveWdTickers();
 
       if(qualified && !wasQualified){
         // NEW ALERT — state changed to qualifying
@@ -1858,7 +1880,7 @@ function renderWdFeed(){
     const conditions = [
       {label:'UT Bot BUY', pass: a.signal==='bull'},
       {label:'Above VWAP', pass: a.aboveVwap},
-      {label:'Score '+a.score+'/8', pass: a.score>=6},
+      {label:'Score '+a.score+'/9', pass: a.score>=6},
       {label:'Squeeze ↑', pass: a.sqzExpanding},
       {label:'RSI '+a.rsiVal.toFixed(0), pass: a.rsiVal>=50&&a.rsiVal<=70},
     ];
@@ -1873,7 +1895,7 @@ function renderWdFeed(){
         <span class="wd-alert-time">${a.tf} • ${a.time}</span>
       </div>
       <div class="wd-alert-body">
-        <div class="wd-alert-score">Confluence score: <span>${a.score}/8</span> | VWAP: <span>${a.vwapLabel} (${a.vwapDev>=0?'+':''}${a.vwapDev.toFixed(2)}%)</span></div>
+        <div class="wd-alert-score">Swing score: <span>${a.score}/9</span> | VWAP: <span>${a.vwapLabel} (${a.vwapDev>=0?'+':''}${a.vwapDev.toFixed(2)}%)</span></div>
         <div class="wd-conditions">
           ${conditions.map(c=>`<span class="wd-cond-tag ${c.pass?'pass':'fail'}">${c.pass?'✅':'⬜'} ${c.label}</span>`).join('')}
         </div>
@@ -1897,7 +1919,7 @@ async function sendWdTelegram(a){
     `🔔 <b>WATCHDOG ALERT — ${a.ticker}</b>\n`+
     `Setup just became STRONG on ${a.tf}!\n\n`+
     `💰 Price: <b>$${a.price.toFixed(2)}</b> (${a.chg>=0?'+':''}${a.chg.toFixed(2)}%)\n`+
-    `📊 Rating: <b>${a.rating}</b> | Score: <b>${a.score}/8</b>\n`+
+    `📊 Rating: <b>${a.rating}</b> | Score: <b>${a.score}/9</b>\n`+
     `🌊 VWAP: <b>${a.vwapLabel}</b> (${a.vwapDev>=0?'+':''}${a.vwapDev.toFixed(2)}%)\n`+
     `🤖 UT Bot: <b>${a.signal==='bull'?'BUY ✅':'—'}</b> | RSI: <b>${a.rsiVal.toFixed(1)}</b>\n\n`+
     `📐 Entry: <b>$${a.price.toFixed(2)}</b> | Stop: <b>$${stop}</b> | T1: <b>$${t1}</b> | T2: <b>$${t2}</b>\n`+
@@ -1908,7 +1930,7 @@ async function sendWdTelegram(a){
       id:buildKalkiSignalId(a.ticker,a.score,a.price,stop),
       ticker:a.ticker,
       score:a.score,
-      scoreMax:8,
+      scoreMax:9,
       grade:a.score>=8?'A+':a.score>=7?'A':'B+',
       timeframe:a.tf,
       price:a.price,
