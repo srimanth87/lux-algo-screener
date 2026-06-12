@@ -347,7 +347,7 @@ tbody tr.loaded{cursor:pointer}
       <input type="range" id="utSensSlider" min="1" max="4" step="0.5" value="1.5" oninput="updateUtSens(this.value)">
       <span class="sens-val" id="utSensVal">1.5</span>
     </div>
-    <button class="tg-btn" onclick="openTgModal()">✈ Telegram</button>
+    <button class="tg-btn" onclick="openTgModal()">✈ Alerts</button>
     <span class="tg-status off" id="tgStatus">Not configured</span>
     <button class="refresh-btn" id="refreshBtn" onclick="refreshActive()">
       <span class="spin-icon">↻</span> Refresh
@@ -356,10 +356,14 @@ tbody tr.loaded{cursor:pointer}
   </div>
 </div>
 
-<!-- TELEGRAM MODAL -->
+<!-- ALERT MODAL -->
 <div class="tg-modal-overlay" id="tgModal">
   <div class="tg-modal">
-    <h3>✈ Telegram Alert Config</h3>
+    <h3>✈ Alert Config</h3>
+    <div>
+      <label>Kalki Webhook Secret</label>
+      <input id="kalkiSecret" type="password" placeholder="Paste LUX_WEBHOOK_SECRET" />
+    </div>
     <div>
       <label>Bot Token</label>
       <input id="tgToken" type="text" placeholder="8570415382:AAF7q0vm..." />
@@ -643,18 +647,29 @@ let ndxResults=[], ndxSortKey='swingScore', ndxSortDir=-1, ndxFilter='all', ndxR
 // Telegram
 let tgToken = localStorage.getItem('lux_tg_token') || '';
 let tgChatId = localStorage.getItem('lux_tg_chat')  || '1026720092';
-function openTgModal(){ document.getElementById('tgToken').value=tgToken; document.getElementById('tgChatId').value=tgChatId; document.getElementById('tgModal').classList.add('open'); }
+const KALKI_ALERT_API = 'https://api.kalkianalysis.com/api/alerts/lux';
+let kalkiSecret = localStorage.getItem('lux_kalki_secret') || '';
+function openTgModal(){
+  document.getElementById('kalkiSecret').value=kalkiSecret;
+  document.getElementById('tgToken').value=tgToken;
+  document.getElementById('tgChatId').value=tgChatId;
+  document.getElementById('tgModal').classList.add('open');
+}
 function closeTgModal(){ document.getElementById('tgModal').classList.remove('open'); }
 async function saveTgConfig(){
+  kalkiSecret=document.getElementById('kalkiSecret').value.trim();
   tgToken=document.getElementById('tgToken').value.trim();
   tgChatId=document.getElementById('tgChatId').value.trim();
+  localStorage.setItem('lux_kalki_secret',kalkiSecret);
   localStorage.setItem('lux_tg_token',tgToken); localStorage.setItem('lux_tg_chat',tgChatId);
-  const ok = await sendTelegram('✅ LuxAlgo Screener — Telegram connected!');
+  const kalkiOk = Boolean(kalkiSecret);
+  const tgOk = tgToken ? await sendTelegram('✅ LuxAlgo Screener — Telegram connected!') : false;
+  const ok = kalkiOk || tgOk;
   updateTgStatus(ok); closeTgModal();
 }
 function updateTgStatus(ok){
   const el=document.getElementById('tgStatus');
-  el.textContent=ok?'✅ Connected':'❌ Failed';
+  el.textContent=kalkiSecret&&tgToken?'✅ Kalki + TG':kalkiSecret?'✅ Kalki':tgToken?'✅ Telegram':ok?'✅ Connected':'Not configured';
   el.className='tg-status '+(ok?'ok':'off');
 }
 async function sendTelegram(msg){
@@ -667,7 +682,27 @@ async function sendTelegram(msg){
     return r.ok;
   }catch{return false;}
 }
-if(tgToken){ updateTgStatus(true); }
+async function sendKalkiLuxAlert(payload, configTest=false){
+  if(!kalkiSecret) return false;
+  try{
+    const r=await fetch(KALKI_ALERT_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${kalkiSecret}`},
+      body:JSON.stringify({...payload, receivedAt:new Date().toISOString()})
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||data.ok===false) throw new Error(data.error||`HTTP ${r.status}`);
+    return true;
+  }catch(e){
+    console.warn(configTest?'Kalki webhook test failed':'Kalki alert failed', e.message);
+    return false;
+  }
+}
+function buildKalkiSignalId(ticker,score,entry,stop){
+  const minute=new Date().toISOString().slice(0,16).replace(/[^0-9T]/g,'');
+  return `lux-${ticker}-${score}-${Number(entry).toFixed(2)}-${Number(stop).toFixed(2)}-${minute}`.replace(/[^A-Za-z0-9_.:-]/g,'-');
+}
+if(tgToken||kalkiSecret){ updateTgStatus(true); }
 
 // ════════════════════════════════════════════
 // TABS / TF
@@ -1127,7 +1162,7 @@ function renderTradeCard(ticker, tf1h, tf15m, tf5m, mtf, price){
         Confluence: <span class="score-val">${score}</span><span class="score-max">/8</span>
       </div>
       <div class="card-actions">
-        <button class="card-tg-btn" onclick="sendAlertCard('${ticker}',${score},'${grade}',${price.toFixed(2)},${entry.toFixed(2)},${stop.toFixed(2)},${t1.toFixed(2)},${t2.toFixed(2)})" ${tgToken?'':'disabled'}>
+        <button class="card-tg-btn" onclick="sendAlertCard('${ticker}',${score},'${grade}',${price.toFixed(2)},${entry.toFixed(2)},${stop.toFixed(2)},${t1.toFixed(2)},${t2.toFixed(2)})" ${(tgToken||kalkiSecret)?'':'disabled'}>
           ✈ Send Alert
         </button>
       </div>
@@ -1143,7 +1178,17 @@ async function sendAlertCard(ticker,score,grade,price,entry,stop,t1,t2){
     `🛑 Stop: <b>$${stop}</b>\n`+
     `🎯 T1: <b>$${t1}</b> | T2: <b>$${t2}</b>\n\n`+
     `⏰ ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} EST`;
-  await sendTelegram(msg);
+  await Promise.all([
+    sendTelegram(msg),
+    sendKalkiLuxAlert({
+      id:buildKalkiSignalId(ticker,score,entry,stop),
+      ticker, score, scoreMax:8, grade, timeframe:currentTF,
+      price, entry, stop, t1, t2,
+      pattern:'Lux confluence alert',
+      signal:'bull',
+      raw:msg.replace(/<[^>]+>/g,'')
+    })
+  ]);
 }
 
 // ════════════════════════════════════════════
@@ -1234,7 +1279,7 @@ async function runConfluenceScan(silent=false){
     // ── DEDUP: Only send Telegram for STATE CHANGES (non-qualifying → qualifying) ──
     // AND only if the ticker hasn't been alerted in the last 60 minutes
     // Persisted in localStorage so page reloads don't re-trigger
-    if(tgToken && alerts.length){
+    if((tgToken||kalkiSecret) && alerts.length){
       const now = Date.now();
       const COOLDOWN = 60 * 60 * 1000; // 60 min cooldown per ticker
 
@@ -1583,7 +1628,7 @@ function openTAModal(ticker, rowJson){
 
   document.getElementById('taFooterNote').textContent =
     `${ticker} • ${currentTF} • Swing ${swingStars}★ • ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}`;
-  document.getElementById('taTgBtn').disabled = !tgToken;
+  document.getElementById('taTgBtn').disabled = !(tgToken||kalkiSecret);
 
   document.getElementById('taOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -1596,7 +1641,7 @@ function closeTAModal(e){
 }
 
 async function sendTAAlert(){
-  if(!currentTARow||!tgToken) return;
+  if(!currentTARow||(!tgToken&&!kalkiSecret)) return;
   const r=currentTARow;
   const stopPct=r.atrPct*1.5;
   const stop=+(r.price*(1-stopPct/100)).toFixed(2);
@@ -1617,7 +1662,27 @@ async function sendTAAlert(){
     `🤖 UT Bot: <b>${r.signal==='bull'?'BUY':r.signal==='bear'?'SELL':'No signal'}</b> | RSI: <b>${r.rsiVal.toFixed(1)}</b>
 `+
     `⏰ ${new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} EST`;
-  await sendTelegram(msg);
+  await Promise.all([
+    sendTelegram(msg),
+    sendKalkiLuxAlert({
+      id:buildKalkiSignalId(r.ticker,r.swingScore,r.price,stop),
+      ticker:r.ticker,
+      score:Math.min(8,Math.max(0,r.swingScore)),
+      scoreMax:8,
+      grade:r.swingStars>=5?'A+':r.swingStars>=4?'A':'B+',
+      timeframe:currentTF,
+      price:r.price,
+      entry:r.price,
+      stop,
+      t1,
+      t2,
+      pattern:'Lux trade analysis alert',
+      signal:r.signal,
+      vwapLabel:r.vwapLabel,
+      vwapDev:r.vwapDev,
+      raw:msg.replace(/<[^>]+>/g,'')
+    })
+  ]);
 }
 
 
@@ -1823,7 +1888,7 @@ function renderWdFeed(){
 }
 
 async function sendWdTelegram(a){
-  if(!tgToken) return;
+  if(!tgToken&&!kalkiSecret) return;
   const stopPct = a.atrPct*1.5;
   const stop = (a.price*(1-stopPct/100)).toFixed(2);
   const t1   = (a.price*(1+stopPct/100*2)).toFixed(2);
@@ -1837,7 +1902,27 @@ async function sendWdTelegram(a){
     `🤖 UT Bot: <b>${a.signal==='bull'?'BUY ✅':'—'}</b> | RSI: <b>${a.rsiVal.toFixed(1)}</b>\n\n`+
     `📐 Entry: <b>$${a.price.toFixed(2)}</b> | Stop: <b>$${stop}</b> | T1: <b>$${t1}</b> | T2: <b>$${t2}</b>\n`+
     `⏰ ${a.time} EST`;
-  await sendTelegram(msg);
+  await Promise.all([
+    sendTelegram(msg),
+    sendKalkiLuxAlert({
+      id:buildKalkiSignalId(a.ticker,a.score,a.price,stop),
+      ticker:a.ticker,
+      score:a.score,
+      scoreMax:8,
+      grade:a.score>=8?'A+':a.score>=7?'A':'B+',
+      timeframe:a.tf,
+      price:a.price,
+      entry:a.price,
+      stop:Number(stop),
+      t1:Number(t1),
+      t2:Number(t2),
+      pattern:'Lux watchdog alert',
+      signal:a.signal,
+      vwapLabel:a.vwapLabel,
+      vwapDev:a.vwapDev,
+      raw:msg.replace(/<[^>]+>/g,'')
+    })
+  ]);
 }
 
 function clearWdFeed(){
