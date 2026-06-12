@@ -477,7 +477,7 @@ tbody tr.loaded{cursor:pointer}
     <label style="margin-left:8px">Source:</label>
     <select class="threshold-sel" id="alertSource">
       <option value="watchlist">Watchlist only</option>
-      <option value="ndx">NDX 100 (must scan first)</option>
+      <option value="ndx">NDX 100 (auto-refresh first)</option>
     </select>
     <label style="margin-left:8px">Auto-scan:</label>
     <select class="threshold-sel" id="autoAlertInterval">
@@ -638,11 +638,13 @@ let wlResults=[], wlSortKey='swingScore', wlSortDir=-1;
 let maxExitsFilter = 5; // 5 = show all
 // Auto-alert state
 let autoAlertTimer = null;
+let autoAlertCountdownTimer = null;
+let autoAlertRunning = false;
 // alertedTickers persisted in localStorage so reloads don't re-trigger
 // Structure: { ticker: { ts: timestamp, score: lastScore, qualified: bool } }
 let alertedTickers = JSON.parse(localStorage.getItem('lux_alerted') || '{}');
 function saveAlertedTickers(){ localStorage.setItem('lux_alerted', JSON.stringify(alertedTickers)); }
-let ndxResults=[], ndxSortKey='swingScore', ndxSortDir=-1, ndxFilter='all', ndxRunning=false, ndxScannedCount=0;
+let ndxResults=[], ndxSortKey='swingScore', ndxSortDir=-1, ndxFilter='all', ndxRunning=false, ndxScanPromise=null, ndxScannedCount=0;
 const MTF_TIMEFRAME = 'MTF-1h-15m-5m';
 
 // Telegram
@@ -1200,37 +1202,69 @@ async function sendAlertCard(ticker,score,grade,price,entry,stop,t1,t2){
 // ════════════════════════════════════════════
 function setAutoAlert(){
   if(autoAlertTimer){ clearInterval(autoAlertTimer); autoAlertTimer=null; }
+  if(autoAlertCountdownTimer){ clearInterval(autoAlertCountdownTimer); autoAlertCountdownTimer=null; }
   const mins=parseInt(document.getElementById('autoAlertInterval').value);
   const statusEl=document.getElementById('autoAlertStatus');
   if(mins===0){ statusEl.textContent='Auto-scan: Off'; return; }
-  statusEl.textContent=`⏳ Next scan in ${mins}m`;
+
   let remaining=mins*60;
-  const countdown=setInterval(()=>{
-    remaining--;
-    const m=Math.floor(remaining/60),s=remaining%60;
-    statusEl.textContent=`⏳ Next scan in ${m}:${s.toString().padStart(2,'0')}`;
-    if(remaining<=0){ clearInterval(countdown); }
-  },1000);
-  autoAlertTimer=setInterval(async()=>{
-    clearInterval(countdown);
+  function startCountdown(){
+    if(autoAlertCountdownTimer) clearInterval(autoAlertCountdownTimer);
     remaining=mins*60;
-    const newCountdown=setInterval(()=>{
+    statusEl.textContent=`⏳ Next scan in ${mins}m`;
+    autoAlertCountdownTimer=setInterval(()=>{
       remaining--;
       const m=Math.floor(remaining/60),s=remaining%60;
       statusEl.textContent=`⏳ Next scan in ${m}:${s.toString().padStart(2,'0')}`;
-      if(remaining<=0) clearInterval(newCountdown);
+      if(remaining<=0 && autoAlertCountdownTimer){
+        clearInterval(autoAlertCountdownTimer);
+        autoAlertCountdownTimer=null;
+      }
     },1000);
-    await runConfluenceScan(true); // silent=true, no UI loading flash
+  }
+  startCountdown();
+
+  autoAlertTimer=setInterval(async()=>{
+    if(autoAlertRunning) return;
+    autoAlertRunning=true;
+    if(autoAlertCountdownTimer){ clearInterval(autoAlertCountdownTimer); autoAlertCountdownTimer=null; }
+    const sourceLabel=document.getElementById('alertSource').value==='ndx'?'Refreshing NDX → scanning confluence…':'Scanning watchlist confluence…';
+    statusEl.textContent='⏳ '+sourceLabel;
+    try{
+      await runConfluenceScan(true);
+    }catch(e){
+      statusEl.textContent='⚠ Auto-scan failed; retrying next interval';
+    }finally{
+      autoAlertRunning=false;
+      startCountdown();
+    }
   }, mins*60*1000);
 }
 document.getElementById('autoAlertInterval').addEventListener('change', setAutoAlert);
 
-async function runConfluenceScan(silent=false){
+async function runConfluenceScan(silent=false, opts={}){
   const btn=document.getElementById('alertScanBtn');
   btn.disabled=true; btn.textContent='⏳ Scanning…';
   const threshold=parseInt(document.getElementById('alertThreshold').value);
   const source=document.getElementById('alertSource').value;
-  const tickers=source==='ndx'?(ndxResults.length?ndxResults.map(r=>r.ticker):watchlistTickers):watchlistTickers;
+  if(source==='ndx' && !opts.skipSourceRefresh){
+    if(!silent) document.getElementById('alertGrid').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim)"><span class="pulse">⬤</span> Refreshing NDX 100 before confluence scan…</div>`;
+    const statusEl=document.getElementById('autoAlertStatus');
+    if(statusEl) statusEl.textContent='⏳ Refreshing NDX 100…';
+    await startNDXScan(silent);
+  }
+  const tickers=source==='ndx'?ndxResults.map(r=>r.ticker):watchlistTickers;
+
+  if(source==='ndx' && !tickers.length){
+    document.getElementById('alertGrid').innerHTML=`<div class="no-alerts" style="grid-column:1/-1">
+      <h3>NDX 100 refresh found no symbols</h3>
+      <p>Try again in a minute. If Yahoo/proxy is slow, the next auto-scan will retry.</p>
+    </div>`;
+    document.getElementById('badge-alerts').textContent='0';
+    document.getElementById('badge-alerts').className='tab-badge';
+    btn.disabled=false; btn.textContent='🎯 Run Confluence Scan';
+    return;
+  }
 
   if(!silent) document.getElementById('alertGrid').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim)"><span class="pulse">⬤</span> Scanning ${tickers.length} tickers across 1H, 15m, 5m…</div>`;
   document.getElementById('badge-alerts').textContent='…';
@@ -1398,33 +1432,39 @@ function renderWLTable(sorted,errHtml=''){
 // ════════════════════════════════════════════
 // NDX 100 SCAN
 // ════════════════════════════════════════════
-async function startNDXScan(){
-  if(ndxRunning)return;
+async function startNDXScan(silent=false){
+  if(ndxRunning && ndxScanPromise) return ndxScanPromise;
   ndxRunning=true; ndxResults=[]; ndxScannedCount=0;
-  document.getElementById('badge-ndx100').textContent='…';
-  document.getElementById('badge-ndx100').className='tab-badge scanning';
-  document.getElementById('ndxTotal').textContent=NDX100.length;
-  document.getElementById('ndxScanned').textContent=0;
-  document.getElementById('ndxProgress').style.width='0%';
-  document.getElementById('ndx100Body').innerHTML=`<tr class="loading-row"><td colspan="15"><span class="pulse">⬤</span> Scanning NDX 100 on ${currentTF}…</td></tr>`;
+  ndxScanPromise=(async()=>{
+    document.getElementById('badge-ndx100').textContent='…';
+    document.getElementById('badge-ndx100').className='tab-badge scanning';
+    document.getElementById('ndxTotal').textContent=NDX100.length;
+    document.getElementById('ndxScanned').textContent=0;
+    document.getElementById('ndxProgress').style.width='0%';
+    if(!silent) document.getElementById('ndx100Body').innerHTML=`<tr class="loading-row"><td colspan="15"><span class="pulse">⬤</span> Scanning NDX 100 on ${currentTF}…</td></tr>`;
 
-  for(let i=0;i<NDX100.length;i+=5){
-    const batch=NDX100.slice(i,i+5);
-    await Promise.allSettled(batch.map(async t=>{
-      try{
-        const[cd,vd]=await Promise.all([fetchCandles(t,currentTF),fetchVWAP(t)]);
-        if(cd.valid.length>=20) ndxResults.push(computeRow(t,cd.valid,cd.regularMarketPrice,cd.prevClose,vd));
-      }catch{}
-      ndxScannedCount++;
-      document.getElementById('ndxScanned').textContent=ndxScannedCount;
-      document.getElementById('ndxProgress').style.width=(ndxScannedCount/NDX100.length*100)+'%';
-    }));
-    renderNDXTable();
-    await new Promise(r=>setTimeout(r,200));
-  }
-  document.getElementById('badge-ndx100').textContent=ndxResults.length;
-  document.getElementById('badge-ndx100').className='tab-badge done';
-  ndxRunning=false;
+    for(let i=0;i<NDX100.length;i+=5){
+      const batch=NDX100.slice(i,i+5);
+      await Promise.allSettled(batch.map(async t=>{
+        try{
+          const[cd,vd]=await Promise.all([fetchCandles(t,currentTF),fetchVWAP(t)]);
+          if(cd.valid.length>=20) ndxResults.push(computeRow(t,cd.valid,cd.regularMarketPrice,cd.prevClose,vd));
+        }catch{}
+        ndxScannedCount++;
+        document.getElementById('ndxScanned').textContent=ndxScannedCount;
+        document.getElementById('ndxProgress').style.width=(ndxScannedCount/NDX100.length*100)+'%';
+      }));
+      renderNDXTable();
+      await new Promise(r=>setTimeout(r,200));
+    }
+    document.getElementById('badge-ndx100').textContent=ndxResults.length;
+    document.getElementById('badge-ndx100').className='tab-badge done';
+    return ndxResults;
+  })().finally(()=>{
+    ndxRunning=false;
+    ndxScanPromise=null;
+  });
+  return ndxScanPromise;
 }
 function setNdxFilter(f){
   ndxFilter=f;
